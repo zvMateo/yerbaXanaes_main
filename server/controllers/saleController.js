@@ -60,9 +60,37 @@ const getAllSales = async (req, res) => {
   }
 };
 
+//Obtener todas las ventas de un producto especifico
+const getSalesByProduct = async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    //Verificar que el producto existe primero
+    const productExists = await Product.findById(productId);
+    if (!productExists) {
+      return res.status(404).json({ message: 'Producto no encontrado.' });
+    }
+
+    const sales = await Sale.find({ product: productId })
+      .populate('product', 'name type category') //Detalles del producto
+      .sort({date: -1}); // Ordenar por fecha de venta descendente (más reciente primero)
+
+    if (!sales || sales.length === 0) {       //Verificar si hay ventas
+      return res.status(404).json({ message: 'No se encontraron ventas para este producto.' });
+    }
+
+    // Si hay ventas, devolverlas
+    res.json(sales);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al obtener las ventas del producto.' });
+  }
+};
+
 module.exports = {
   createSale,
   getAllSales,
+  getSalesByProduct,
 };
 
 // Este controlador maneja las operaciones CRUD para las ventas

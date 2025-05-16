@@ -20,11 +20,15 @@ app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('¡Servidor Backend funcionando!');
-});
+}); 
+
+
 
 
 app.use('/api/sales', saleRoutes); 
 app.use('/api/products-general', productGeneralRoutes); 
+// Aquí se pueden agregar más rutas según sea necesario
+
 
 
 // Iniciar el servidor
