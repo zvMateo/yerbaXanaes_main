@@ -23,16 +23,17 @@ const createProduct = async (req, res) => {
         if (pkg.sizeInKg === undefined || typeof pkg.sizeInKg !== 'number' || pkg.sizeInKg <= 0) {
           return res.status(400).json({ message: 'Cada paquete debe tener un sizeInKg numérico y mayor a cero.' });
         }
-        if (pkg.price === undefined || typeof pkg.price !== 'number' || pkg.price < 0) {
-          return res.status(400).json({ message: 'Cada paquete debe tener un price numérico y no negativo.' });
+        if (pkg.price === undefined || typeof pkg.price !== 'number' || pkg.price <= 0) {
+          return res.status(400).json({ message: 'Cada paquete debe tener un precio numérico y mayor que cero.' });
         }
       }
       // Para yerba/yuyo, no necesitamos price ni stock a nivel de producto general
       delete bodyForSave.price; // Eliminar para que no se guarde si se envió por error
       delete bodyForSave.stock;
-    } else { // Para otros tipos de productos (mates, accesorios, etc.)
-      if (price === undefined || typeof price !== 'number' || price < 0) {
-        return res.status(400).json({ message: 'Para este tipo de producto, price es obligatorio y debe ser un número no negativo.' });
+    } else { 
+      // Para otros tipos de productos (mates, accesorios, etc.)
+      if (price === undefined || typeof price !== 'number' || price <= 0) {
+        return res.status(400).json({ message: 'Para este tipo de producto, precio es obligatorio y debe ser un número mayor que cero.' });
       }
       if (stock === undefined || typeof stock !== 'number' || stock < 0) {
         return res.status(400).json({ message: 'Para este tipo de producto, stock es obligatorio y debe ser un número no negativo.' });
@@ -108,8 +109,8 @@ const updateProduct = async (req, res) => {
           if (pkg.sizeInKg === undefined || typeof pkg.sizeInKg !== 'number' || pkg.sizeInKg <= 0) {
             return res.status(400).json({ message: 'Cada paquete debe tener un sizeInKg numérico y mayor a cero.' });
           }
-          if (pkg.price === undefined || typeof pkg.price !== 'number' || pkg.price < 0) {
-            return res.status(400).json({ message: 'Cada paquete debe tener un price numérico y no negativo.' });
+          if (pkg.price === undefined || typeof pkg.price !== 'number' || pkg.price <= 0) {
+            return res.status(400).json({ message: 'Cada paquete debe tener un precio numérico y no negativo.' });
           }
         }
       }
@@ -126,8 +127,8 @@ const updateProduct = async (req, res) => {
 
 
     } else { // Para otros tipos de productos
-      if (price !== undefined && (typeof price !== 'number' || price < 0)) {
-        return res.status(400).json({ message: 'Para este tipo de producto, price debe ser un número no negativo.' });
+      if (price !== undefined && (typeof price !== 'number' || price <= 0)) {
+        return res.status(400).json({ message: 'Para este tipo de producto, precio debe ser un número no negativo.' });
       }
       if (stock !== undefined && (typeof stock !== 'number' || stock < 0)) {
         return res.status(400).json({ message: 'Para este tipo de producto, stock debe ser un número no negativo.' });
