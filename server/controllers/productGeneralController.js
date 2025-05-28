@@ -1,4 +1,35 @@
 const Product = require('../models/Product');
+const cloudinary = require('../config/cloudinaryConfig'); // Asegúrate de que tienes configurado Cloudinary si lo necesitas
+
+const uploadToCloudinary = async (fileBuffer,folderName = 'ecommerce-yerbaxanaes/products') => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: folderName, resource_type: 'image' },
+      (error, result) => {
+        if (error) {
+          console.error('Error al subir a Cloudinary:', error);
+          return reject(new Error('Error al subir la imagen a Cloudinary'));
+        }
+        resolve(result);
+      }
+    );
+    uploadStream.end(fileBuffer); // Terminar el stream con el buffer de la imagen
+  });
+};
+
+const deleteFromCloudinary = async (publicId) => {
+  return new Promise((resolve, reject) => {
+    if (!publicId) return resolve(); // Si no hay publicId, no hay nada que borrar
+    cloudinary.uploader.destroy(publicId, (error, result) => {
+      if (error) {
+        console.error('Error al eliminar de Cloudinary:', error);
+        return resolve({ warning: 'Error al eliminar la imagen antigua de cloudinary.', error });
+      }
+      console.log('Imagen eliminada de Cloudinary:', result);
+      resolve(result);
+    });
+  });
+};
 
 // Crear un nuevo producto
 const createProduct = async (req, res) => {
@@ -43,6 +74,22 @@ const createProduct = async (req, res) => {
       delete bodyForSave.packageSizes;
     }
 
+    // Manejo de la imagen
+    if (req.file) {
+      try {
+        const result = await uploadToCloudinary(req.file.buffer);
+        bodyForSave.imageUrl = result.secure_url; // URL de la imagen
+        bodyForSave.imagePublicId = result.public_id; // ID público de la imagen en Cloudinary
+      } catch (error) {
+        //Falla la creación del producto si no se puede subir la imagen
+        console.error('Error al subir la imagen durante la creación:', uploadError);
+        return res.status(500).json({ message: 'Error al subir la imagen. No se creó el producto.', error: uploadError.message});
+      }
+    } else {
+            return res.status(400).json({ message: 'La imagen es obligatoria para crear un producto.' });
+    }
+
+
     const product = new Product(bodyForSave);
     const created = await product.save();
     res.status(201).json(created);
@@ -68,6 +115,24 @@ const getAllProducts = async (req, res) => {
   }
 };
 
+// Obtener un producto por ID (para vista pública)
+const getProductById = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product || !product.isActive) { // Solo productos activos para el público
+      return res.status(404).json({ message: 'Producto no encontrado o no disponible.' });
+    }
+    res.json(product);
+  } catch (error) {
+    console.error('Error en getProductById:', error);
+    // Si el ID tiene un formato inválido para MongoDB, Mongoose puede lanzar un CastError
+    if (error.name === 'CastError') {
+        return res.status(400).json({ message: 'ID de producto inválido.' });
+    }
+    res.status(500).json({ message: 'Error al obtener el producto.' });
+  }
+};
+
 // Eliminar un producto por ID
 const deleteProduct = async (req, res) => {
   try {
@@ -75,12 +140,23 @@ const deleteProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: 'Producto no encontrado.' });
     }
+
+    //Eliminar imagen de Cloudinary si existe
+    if (product.imagePublicId) {
+      await deleteFromCloudinary(product.imagePublicId);
+      console.log('Imagen eliminada de Cloudinary.');
+    }
+
+    await Product.findByIdAndDelete(req.params.id); // Asegurarse de que se elimine el producto de la base de datos
+
     res.json({ message: 'Producto eliminado correctamente.' });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error al eliminar el producto.' });
+    console.error('Error en deleteProduct',error);
+    res.status(500).json({ message: 'Error al eliminar el producto.', error: error.message });
   }
 };
+
+
 
 //  Actualizar un producto por ID
 const updateProduct = async (req, res) => {
@@ -139,6 +215,27 @@ const updateProduct = async (req, res) => {
       if (updateData.hasOwnProperty('stockInKg')) delete updateData.stockInKg;
       if (updateData.hasOwnProperty('packageSizes')) delete updateData.packageSizes;
     }
+
+
+
+    // Manejo de la imagen en la actualización
+    if (req.file) {
+      try {
+        // 1. Eliminar la imagen antigua de Cloudinary si existe
+        if (existingProduct.imagePublicId) {
+          await deleteFromCloudinary(existingProduct.imagePublicId);
+          console.log('Imagen antigua eliminada de Cloudinary.');
+        }
+        // 2. Subir la nueva imagen a Cloudinary
+        const result = await uploadToCloudinary(req.file.buffer);
+        updateData.imageUrl = result.secure_url; // URL de la nueva imagen
+        updateData.imagePublicId = result.public_id; // ID público de la nueva imagen en Cloudinary
+      } catch (uploadError) {
+        console.error('Error al subir/actualizar imagen:', uploadError);
+
+        return res.status(500).json({ message: 'Error al subir la imagen. No se actualizó el producto.', error: uploadError.message });
+      }
+    }
     
     // Si el tipo está cambiando, asegurarse de que los campos del tipo anterior se eliminen
     // Esto es un poco más complejo si queremos usar $unset para borrar campos de la BD.
@@ -169,6 +266,7 @@ const updateProduct = async (req, res) => {
 module.exports = {
   createProduct,
   getAllProducts,
+  getProductById,
   deleteProduct,
   updateProduct,
 };
