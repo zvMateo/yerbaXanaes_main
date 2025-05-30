@@ -34,72 +34,103 @@ const deleteFromCloudinary = async (publicId) => {
 // Crear un nuevo producto
 const createProduct = async (req, res) => {
   try {
-    const { type, stockInKg, packageSizes, price, stock, name, category } = req.body;
+    console.log('--- Inicio createProduct ---');
+    console.log('req.body original:', JSON.stringify(req.body, null, 2));
 
-    // Validaciones básicas
-    if (!name || !category || !type) {
-        return res.status(400).json({ message: 'Nombre, categoría y tipo son obligatorios.' });
+    // Convertir campos relevantes de req.body
+    let {
+      name, description, category, type,
+      stockInKg, packageSizes, price, stock, isActive // isActive como cadena "True" o "False"
+    } = req.body;
+
+    // Convertir a los tipos correctos
+    if (stockInKg !== undefined) stockInKg = parseFloat(stockInKg);
+    if (price !== undefined) price = parseFloat(price);
+    if (stock !== undefined) stock = parseInt(stock, 10); // O parseFloat si puede tener decimales
+    if (isActive !== undefined) isActive = isActive.toLowerCase() === 'true'; // Convertir "True"/"False" a booleano
+
+    if (packageSizes && Array.isArray(packageSizes)) {
+      packageSizes = packageSizes.map(pkg => ({
+        sizeInKg: pkg.sizeInKg !== undefined ? parseFloat(pkg.sizeInKg) : undefined,
+        price: pkg.price !== undefined ? parseFloat(pkg.price) : undefined,
+        // Si tienes stockPackage, también conviértelo
+        // stockPackage: pkg.stockPackage !== undefined ? parseInt(pkg.stockPackage, 10) : undefined,
+      }));
     }
 
-    const bodyForSave = { ...req.body }; // Clonar el body para modificarlo antes de guardar
+    console.log('Valores después de conversión:');
+    console.log('  type:', type);
+    console.log('  stockInKg:', stockInKg, '(tipo:', typeof stockInKg, ')');
+    console.log('  price:', price, '(tipo:', typeof price, ')');
+    console.log('  stock:', stock, '(tipo:', typeof stock, ')');
+    console.log('  isActive:', isActive, '(tipo:', typeof isActive, ')');
+    console.log('  packageSizes:', JSON.stringify(packageSizes, null, 2));
+
+
+    // Validaciones básicas
+    if (!name || !category || !type || !description) {
+        return res.status(400).json({ message: 'Nombre, categoría, tipo y descripción son obligatorios.' });
+    }
+
+    const bodyForSave = { name, description, category, type, isActive }; // Empezar con los campos que no cambian mucho
 
     if (type === 'yerba' || type === 'yuyo') {
-      if (stockInKg === undefined || typeof stockInKg !== 'number' || stockInKg < 0) {
+      console.log('Entrando a validación para tipo yerba/yuyo...');
+      if (stockInKg === undefined || isNaN(stockInKg) || stockInKg < 0) { // Usar isNaN para verificar si la conversión fue exitosa
+        console.log('--- FALLO VALIDACIÓN stockInKg ---');
+        // ... (tus logs de depuración si quieres mantenerlos)
         return res.status(400).json({ message: 'Para yerba/yuyo, stockInKg es obligatorio y debe ser un número no negativo.' });
       }
+      bodyForSave.stockInKg = stockInKg;
+
       if (!packageSizes || !Array.isArray(packageSizes) || packageSizes.length === 0) {
         return res.status(400).json({ message: 'Para yerba/yuyo, packageSizes es obligatorio y debe ser un array con al menos un paquete.' });
       }
       for (const pkg of packageSizes) {
-        if (pkg.sizeInKg === undefined || typeof pkg.sizeInKg !== 'number' || pkg.sizeInKg <= 0) {
+        if (pkg.sizeInKg === undefined || isNaN(pkg.sizeInKg) || pkg.sizeInKg <= 0) {
           return res.status(400).json({ message: 'Cada paquete debe tener un sizeInKg numérico y mayor a cero.' });
         }
-        if (pkg.price === undefined || typeof pkg.price !== 'number' || pkg.price <= 0) {
+        if (pkg.price === undefined || isNaN(pkg.price) || pkg.price <= 0) {
           return res.status(400).json({ message: 'Cada paquete debe tener un precio numérico y mayor que cero.' });
         }
       }
-      // Para yerba/yuyo, no necesitamos price ni stock a nivel de producto general
-      delete bodyForSave.price; // Eliminar para que no se guarde si se envió por error
-      delete bodyForSave.stock;
-    } else { 
-      // Para otros tipos de productos (mates, accesorios, etc.)
-      if (price === undefined || typeof price !== 'number' || price <= 0) {
+      bodyForSave.packageSizes = packageSizes;
+      // No incluir price y stock generales para yerba/yuyo
+    } else { // Para otros tipos de producto
+      if (price === undefined || isNaN(price) || price <= 0) {
         return res.status(400).json({ message: 'Para este tipo de producto, precio es obligatorio y debe ser un número mayor que cero.' });
       }
-      if (stock === undefined || typeof stock !== 'number' || stock < 0) {
+      if (stock === undefined || isNaN(stock) || stock < 0) {
         return res.status(400).json({ message: 'Para este tipo de producto, stock es obligatorio y debe ser un número no negativo.' });
       }
-      // Para estos productos, no necesitamos stockInKg ni packageSizes
-      delete bodyForSave.stockInKg;
-      delete bodyForSave.packageSizes;
+      bodyForSave.price = price;
+      bodyForSave.stock = stock;
+      // No incluir stockInKg y packageSizes para otros tipos
     }
 
     // Manejo de la imagen
     if (req.file) {
       try {
         const result = await uploadToCloudinary(req.file.buffer);
-        bodyForSave.imageUrl = result.secure_url; // URL de la imagen
-        bodyForSave.imagePublicId = result.public_id; // ID público de la imagen en Cloudinary
-      } catch (error) {
-        //Falla la creación del producto si no se puede subir la imagen
-        console.error('Error al subir la imagen durante la creación:', uploadError);
-        return res.status(500).json({ message: 'Error al subir la imagen. No se creó el producto.', error: uploadError.message});
+        bodyForSave.imageUrl = result.secure_url;
+        bodyForSave.imagePublicId = result.public_id;
+      } catch (uploadError) {
+        console.error('Error al subir imagen durante la creación:', uploadError);
+        return res.status(500).json({ message: 'Error al subir la imagen. No se creó el producto.', error: uploadError.message });
       }
-    } else {
-            return res.status(400).json({ message: 'La imagen es obligatoria para crear un producto.' });
     }
-
 
     const product = new Product(bodyForSave);
     const created = await product.save();
+    console.log('--- Fin createProduct (éxito) ---');
     res.status(201).json(created);
+
   } catch (error) {
-    console.error('Error en createProduct:', error);
+    console.error('Error en createProduct (catch general):', error);
     if (error.name === 'ValidationError') {
         const messages = Object.values(error.errors).map(val => val.message);
         return res.status(400).json({ message: `Error de validación: ${messages.join(', ')}` });
     }
-    // Para otros errores, mantenemos el mensaje genérico o el específico del error
     res.status(400).json({ message: 'Error al crear el producto.', error: error.message || error });
   }
 };
@@ -161,103 +192,159 @@ const deleteProduct = async (req, res) => {
 //  Actualizar un producto por ID
 const updateProduct = async (req, res) => {
   try {
-    const { type, stockInKg, packageSizes, price, stock } = req.body;
     const productId = req.params.id;
+    console.log(`--- Inicio updateProduct para ID: ${productId} ---`);
+    console.log('req.body original para update:', JSON.stringify(req.body, null, 2));
 
     const existingProduct = await Product.findById(productId);
     if (!existingProduct) {
-        return res.status(404).json({ message: 'Producto no encontrado.' });
+      return res.status(404).json({ message: 'Producto no encontrado.' });
     }
+
+    // Desestructurar y convertir campos de req.body
+    // Usamos 'let' para poder reasignar después de la conversión
+    let {
+      name, description, category, type,
+      stockInKg, packageSizes, price, stock, isActive
+    } = req.body;
+
+    // Convertir a los tipos correctos (solo si los campos están presentes en req.body)
+    // Si un campo no se envía en la actualización, no se intentará convertir ni se incluirá en updateData inicialmente.
+    const updateData = {}; // Objeto para construir los datos de actualización
+
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (category !== undefined) updateData.category = category;
+    if (type !== undefined) updateData.type = type;
+
+    if (stockInKg !== undefined) {
+      updateData.stockInKg = parseFloat(stockInKg);
+    }
+    if (price !== undefined) {
+      updateData.price = parseFloat(price);
+    }
+    if (stock !== undefined) {
+      updateData.stock = parseInt(stock, 10); // O parseFloat
+    }
+    if (isActive !== undefined) {
+      updateData.isActive = String(isActive).toLowerCase() === 'true';
+    }
+
+    if (packageSizes && Array.isArray(packageSizes)) {
+      updateData.packageSizes = packageSizes.map(pkg => {
+        const newPkg = {};
+        if (pkg.sizeInKg !== undefined) newPkg.sizeInKg = parseFloat(pkg.sizeInKg);
+        if (pkg.price !== undefined) newPkg.price = parseFloat(pkg.price);
+        // Si tienes _id en los paquetes y quieres mantenerlos o actualizarlos, necesitas manejarlos.
+        // Por ahora, si se reenvían todos los packageSizes, se reemplazarán.
+        // Si solo se envía un paquete para actualizar, la lógica de Mongoose con arrays es más compleja.
+        // Para una actualización simple de todo el array packageSizes:
+        return newPkg;
+      }).filter(pkg => pkg.sizeInKg !== undefined && pkg.price !== undefined); // Filtrar paquetes incompletos si es necesario
+    } else if (packageSizes !== undefined) { // Si packageSizes se envía pero no es un array válido
+        return res.status(400).json({ message: 'packageSizes debe ser un array.' });
+    }
+
+
+    console.log('Valores para updateData después de conversión:');
+    console.log(JSON.stringify(updateData, null, 2));
 
     // Determinar el tipo del producto (el que se envía o el existente si no se envía)
-    const productType = type || existingProduct.type;
-    const updateData = { ...req.body }; // Clonar para modificar
+    // Usamos updateData.type si se envió, sino existingProduct.type
+    const productType = updateData.type || existingProduct.type;
 
+    // Validaciones y limpieza de campos según el tipo
     if (productType === 'yerba' || productType === 'yuyo') {
-      if (stockInKg !== undefined && (typeof stockInKg !== 'number' || stockInKg < 0)) {
-        return res.status(400).json({ message: 'Para yerba/yuyo, stockInKg debe ser un número no negativo.' });
+      // Validar stockInKg si se está actualizando o si es el tipo actual y no se está cambiando
+      if (updateData.hasOwnProperty('stockInKg')) { // Solo validar si se intenta actualizar stockInKg
+        if (isNaN(updateData.stockInKg) || updateData.stockInKg < 0) {
+          return res.status(400).json({ message: 'Para yerba/yuyo, stockInKg debe ser un número no negativo.' });
+        }
+      } else if (type === undefined && (existingProduct.stockInKg === undefined || existingProduct.stockInKg === null)) {
+        // Si no se envía stockInKg y el producto es yerba/yuyo y no tiene stockInKg, podría ser un error si es obligatorio
+        // Esta lógica puede volverse compleja. Por ahora, solo validamos si se envía.
       }
-      if (packageSizes !== undefined) {
-        if (!Array.isArray(packageSizes) || packageSizes.length === 0) {
+
+
+      if (updateData.packageSizes) { // Solo validar si se intenta actualizar packageSizes
+        if (!Array.isArray(updateData.packageSizes) || updateData.packageSizes.length === 0) {
           return res.status(400).json({ message: 'Para yerba/yuyo, packageSizes debe ser un array con al menos un paquete.' });
         }
-        for (const pkg of packageSizes) {
-          if (pkg.sizeInKg === undefined || typeof pkg.sizeInKg !== 'number' || pkg.sizeInKg <= 0) {
+        for (const pkg of updateData.packageSizes) {
+          if (pkg.sizeInKg === undefined || isNaN(pkg.sizeInKg) || pkg.sizeInKg <= 0) {
             return res.status(400).json({ message: 'Cada paquete debe tener un sizeInKg numérico y mayor a cero.' });
           }
-          if (pkg.price === undefined || typeof pkg.price !== 'number' || pkg.price <= 0) {
-            return res.status(400).json({ message: 'Cada paquete debe tener un precio numérico y no negativo.' });
+          if (pkg.price === undefined || isNaN(pkg.price) || pkg.price <= 0) {
+            return res.status(400).json({ message: 'Cada paquete debe tener un precio numérico y mayor que cero.' });
           }
         }
       }
-      // Asegurarse de que no se establezcan price o stock a nivel de producto general si se actualiza como yerba/yuyo
-      // Si se envían explícitamente, los borramos del objeto de actualización.
-      // Si no se envían, no pasa nada. Si se envían como null/undefined, Mongoose los podría borrar si no usamos $unset.
-      // Para simplificar, si el tipo es yerba/yuyo, nos aseguramos que price y stock no estén en updateData.
+      // Si el tipo es yerba/yuyo (o se está cambiando a él), eliminar price y stock generales
       delete updateData.price;
       delete updateData.stock;
-      // Si se está cambiando el tipo a yerba/yuyo, y antes no lo era, también hay que limpiar.
-      // Y si se envían explícitamente, los borramos del objeto de actualización.
-      if (updateData.hasOwnProperty('price')) delete updateData.price;
-      if (updateData.hasOwnProperty('stock')) delete updateData.stock;
-
+      // Para forzar la eliminación en la BD si se cambia de tipo, se usaría $unset
+      // if (existingProduct.type !== productType && (existingProduct.price !== undefined || existingProduct.stock !== undefined)) {
+      //   if (!updateData.$unset) updateData.$unset = {};
+      //   updateData.$unset.price = "";
+      //   updateData.$unset.stock = "";
+      // }
 
     } else { // Para otros tipos de productos
-      if (price !== undefined && (typeof price !== 'number' || price <= 0)) {
-        return res.status(400).json({ message: 'Para este tipo de producto, precio debe ser un número no negativo.' });
+      if (updateData.hasOwnProperty('price')) { // Solo validar si se intenta actualizar price
+        if (isNaN(updateData.price) || updateData.price <= 0) {
+          return res.status(400).json({ message: 'Para este tipo de producto, precio debe ser un número mayor que cero.' });
+        }
       }
-      if (stock !== undefined && (typeof stock !== 'number' || stock < 0)) {
-        return res.status(400).json({ message: 'Para este tipo de producto, stock debe ser un número no negativo.' });
+      if (updateData.hasOwnProperty('stock')) { // Solo validar si se intenta actualizar stock
+        if (isNaN(updateData.stock) || updateData.stock < 0) {
+          return res.status(400).json({ message: 'Para este tipo de producto, stock debe ser un número no negativo.' });
+        }
       }
-      // Asegurarse de que no se establezcan stockInKg o packageSizes si se actualiza como otro tipo
+      // Si el tipo es otro (o se está cambiando a él), eliminar stockInKg y packageSizes
       delete updateData.stockInKg;
       delete updateData.packageSizes;
-      if (updateData.hasOwnProperty('stockInKg')) delete updateData.stockInKg;
-      if (updateData.hasOwnProperty('packageSizes')) delete updateData.packageSizes;
+      // Para forzar la eliminación en la BD si se cambia de tipo:
+      // if (existingProduct.type !== productType && (existingProduct.stockInKg !== undefined || existingProduct.packageSizes.length > 0)) {
+      //   if (!updateData.$unset) updateData.$unset = {};
+      //   updateData.$unset.stockInKg = "";
+      //   updateData.$unset.packageSizes = "";
+      // }
     }
-
-
 
     // Manejo de la imagen en la actualización
     if (req.file) {
       try {
-        // 1. Eliminar la imagen antigua de Cloudinary si existe
         if (existingProduct.imagePublicId) {
           await deleteFromCloudinary(existingProduct.imagePublicId);
           console.log('Imagen antigua eliminada de Cloudinary.');
         }
-        // 2. Subir la nueva imagen a Cloudinary
         const result = await uploadToCloudinary(req.file.buffer);
-        updateData.imageUrl = result.secure_url; // URL de la nueva imagen
-        updateData.imagePublicId = result.public_id; // ID público de la nueva imagen en Cloudinary
+        updateData.imageUrl = result.secure_url;
+        updateData.imagePublicId = result.public_id;
       } catch (uploadError) {
         console.error('Error al subir/actualizar imagen:', uploadError);
-
         return res.status(500).json({ message: 'Error al subir la imagen. No se actualizó el producto.', error: uploadError.message });
       }
     }
-    
-    // Si el tipo está cambiando, asegurarse de que los campos del tipo anterior se eliminen
-    // Esto es un poco más complejo si queremos usar $unset para borrar campos de la BD.
-    // Por ahora, simplemente no los incluimos en la actualización si no corresponden al nuevo tipo.
-    // Si se quiere ser más estricto y borrar campos de la BD al cambiar de tipo, se necesitaría $unset.
-    // Ejemplo: si type cambia de 'yerba' a 'mate', querríamos hacer $unset: { stockInKg: "", packageSizes: "" }
-    // Pero para mantenerlo simple, el código actual solo actualiza con los campos válidos para el productType.
+
+    if (Object.keys(updateData).length === 0 && !req.file) {
+        return res.status(400).json({ message: 'No se proporcionaron datos para actualizar.' });
+    }
 
     const updatedProduct = await Product.findByIdAndUpdate(
       productId,
-      updateData, // Usar el objeto modificado
-      { new: true, runValidators: true }
+      updateData, // Usar el objeto modificado que solo contiene los campos a actualizar
+      { new: true, runValidators: true, omitUndefined: true } // omitUndefined es útil para no sobreescribir con undefined
     );
 
-    // No es necesario verificar !updatedProduct aquí si existingProduct ya fue encontrado,
-    // findByIdAndUpdate con new:true devolverá null solo si el ID no existe, lo cual ya cubrimos.
+    console.log('--- Fin updateProduct (éxito) ---');
     res.json(updatedProduct);
+
   } catch (error) {
-    console.error('Error en updateProduct:', error);
+    console.error('Error en updateProduct (catch general):', error);
     if (error.name === 'ValidationError') {
-        const messages = Object.values(error.errors).map(val => val.message);
-        return res.status(400).json({ message: `Error de validación: ${messages.join(', ')}` });
+      const messages = Object.values(error.errors).map(val => val.message);
+      return res.status(400).json({ message: `Error de validación: ${messages.join(', ')}` });
     }
     res.status(400).json({ message: 'Error al actualizar el producto.', error: error.message || error });
   }
