@@ -1,5 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
+const cors = require('cors');
 const connectDB = require('./config/database');
 const saleRoutes = require('./routes/saleRoutes.js');
 const productGeneralRoutes = require('./routes/productGeneralRoutes.js');
@@ -18,6 +19,9 @@ const app = express();
 // Middleware para manejar el cuerpo de las solicitudes
 // Esto permite que el servidor pueda recibir datos en formato JSON
 app.use(express.json());
+
+app.use(cors()); // Habilitar CORS para permitir solicitudes desde otros dominios
+
 
 // Ruta de prueba para verificar que el servidor está funcionando
 app.get('/', (req, res) => {
