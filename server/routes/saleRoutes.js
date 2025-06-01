@@ -1,11 +1,11 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const { 
+import { 
     createSale,
     getAllSales,
     getSalesByProduct,
-} = require('../controllers/saleController');
-const { protectAdmin } = require('../middleware/authMiddleware'); // Importar el middleware
+} from '../controllers/saleController.js';
+import { protectAdmin } from '../middleware/authMiddleware.js';
 
 // Ruta para crear una venta:
 // - Si es desde la tienda pública, no necesita autenticación de admin.
@@ -21,4 +21,4 @@ router.post('/', protectAdmin, createSale); // Protegida: Admin crea ventas desd
 router.get('/', protectAdmin, getAllSales);
 router.get('/product/:productId', protectAdmin, getSalesByProduct);
 
-module.exports = router;
+export default router;

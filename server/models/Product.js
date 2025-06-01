@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 // Definición del esquema para los tamaños de paquete
 const packageSizeSchema = new mongoose.Schema({
@@ -98,6 +98,8 @@ productSchema.index({ isActive: 1 });
 
 const Product = mongoose.model('Product', productSchema);
 
-module.exports = Product;
+
+
+export default Product;
 
 // Este modelo se usará para interactuar con la colección de productos en la base de datos

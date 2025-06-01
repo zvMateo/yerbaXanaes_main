@@ -2,10 +2,10 @@
 
 @theme {
   /* Define los colores personalizados */
-  --primary-color: #4D681D; /* Gris oscuro */
-  --secondary-color: #6E7B1E; /* Gris más oscuro */
-  --accent-color: #F46314; /* Azul */
-  --text-color: #333333; /* Gris oscuro para el texto */
+  --primary-color: #4D681D; /* Verde */
+  --secondary-color: #6E7B1E; /* Verde oliva */
+  --accent-color: #F46314; /* Naranja */
+  --text-color: #333333; /* Gris oscuro */
   --dark-color: #133626; /* Verde oscuro */
   --warm-color: #975A31; /* Marron cálido */
 }

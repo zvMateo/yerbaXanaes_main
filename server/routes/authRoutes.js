@@ -1,5 +1,5 @@
-const express = require('express');
-const { loginAdmin } = require('../controllers/authController');
+import express from 'express';
+import { loginAdmin } from '../controllers/authController.js'; // Asegúrate que authController.js también use exportaciones ES6 y tenga la extensión .js
 
 const router = express.Router();
 
@@ -11,4 +11,4 @@ router.post('/admin/login', loginAdmin);
 // Aquí podrías añadir más rutas de autenticación en el futuro si es necesario
 // ej. /register, /logout, /forgot-password, etc.
 
-module.exports = router;
+export default router; 

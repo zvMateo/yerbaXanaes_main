@@ -4,7 +4,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardLayout from './pages/DashboardLayout';
 import ProductListPage from './pages/ProductListPage';
 import ProtectedRoute from './components/ProtectedRoute';
-// import ProductFormPage from './pages/ProductFormPage'; // Descomentar cuando la crees
+import ProductFormPage from './pages/ProductFormPage'; // Descomentar cuando la crees
 
 // Quita la importación de App.css si no la usas directamente aquí
 // import './App.css'
@@ -20,10 +20,10 @@ function App() {
           {/* Redirige /admin a /admin/products por defecto */}
           <Route index element={<Navigate to="products" replace />} />
           <Route path="products" element={<ProductListPage />} />
-          {/* Rutas para crear y editar productos (se añadirán después)
+          {/* Rutas para crear y editar productos (se añadirán después) */}
           <Route path="products/new" element={<ProductFormPage mode="create" />} />
-          <Route path="products/edit/:productId" element={<ProductFormPage mode="edit" />} />
-          */}
+          <Route path="products/edit/:productId" element={<ProductFormPage mode="edit" />} /> 
+          
           {/* Otras rutas del dashboard (ej. orders) irían aquí */}
         </Route>
       </Route>

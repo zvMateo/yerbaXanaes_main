@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const saleSchema = new mongoose.Schema({
   product: { // Referencia al producto general (yerba, mate, accesorio, etc.)
@@ -71,6 +71,6 @@ const saleSchema = new mongoose.Schema({
 
 const Sale = mongoose.model('Sale', saleSchema);
 
-module.exports = Sale;
+export default Sale;
 
 // Este modelo se usará para interactuar con la colección de ventas en la base de datos

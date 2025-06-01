@@ -1,148 +1,136 @@
-const Sale = require('../models/Sale');
-const Product = require('../models/Product'); // Importa el modelo general
+// filepath: c:\Users\Usuario\OneDrive\Escritorio\ecommerce-yerbaxanaes\server\controllers\saleController.js
+import Sale from '../models/Sale.js';
+import Product from '../models/Product.js';
+import logger from '../config/logger.js';
+
 
 // Registrar una venta y descontar stock
-const createSale = async (req, res) => {
+export const createSale = async (req, res, next) => {
   try {
     const {
-      productId,
-      packageSize, // Solo para yerba/yuyo
-      quantity,
-      type, // online, presencial
-      // Nuevos campos del cliente
-      customerName,
-      customerEmail,
-      customerPhone,
-      shippingAddress
+      productId, packageSize, quantity, type,
+      customerName, customerEmail, customerPhone, shippingAddress
     } = req.body;
 
-    // Validaciones básicas de los datos del cliente (puedes expandirlas)
     if (!customerName || !customerEmail) {
-      return res.status(400).json({ message: 'El nombre y el email del cliente son obligatorios.' });
+      const err = new Error('El nombre y el email del cliente son obligatorios.');
+      // err.statusCode = 400;
+      return next(err);
     }
-    // Aquí podrías añadir más validaciones para shippingAddress si es obligatorio para ventas 'online', etc.
 
     const product = await Product.findById(productId);
     if (!product) {
-      return res.status(404).json({ message: 'Producto no encontrado.' });
+      const err = new Error('Producto no encontrado.');
+      // err.statusCode = 404;
+      return next(err);
     }
     if (!product.isActive) {
-      return res.status(400).json({ message: 'Este producto no está disponible actualmente.'});
+      const err = new Error('Este producto no está disponible actualmente.');
+      // err.statusCode = 400;
+      return next(err);
     }
 
-    let totalKgCalculated = 0; // Renombrado para evitar confusión con el campo del modelo
+    let totalKgCalculated = 0;
     let priceAtSale = 0;
-    let selectedPackage = null;
+    let selectedPackageDetails = null; // Para guardar el paquete si aplica
 
     if (product.type === 'yerba' || product.type === 'yuyo') {
-      // Venta de yerba/yuyo por paquete
       if (!packageSize) {
-        return res.status(400).json({ message: 'Debes indicar el tamaño del paquete para yerba/yuyo.' });
+        const err = new Error('Debes indicar el tamaño del paquete para yerba/yuyo.');
+        return next(err);
       }
-
-      // Encontrar el paquete específico para obtener su precio
-      selectedPackage = product.packageSizes.find(pkg => pkg.sizeInKg == packageSize); // Usar == para comparar número con posible string
-      if (!selectedPackage) {
-        return res.status(400).json({ message: `El tamaño de paquete ${packageSize}Kg no está disponible para este producto.` });
+      selectedPackageDetails = product.packageSizes.find(pkg => pkg.sizeInKg == packageSize);
+      if (!selectedPackageDetails) {
+        const err = new Error(`El tamaño de paquete ${packageSize}Kg no está disponible para este producto.`);
+        return next(err);
       }
-      priceAtSale = selectedPackage.price; // Precio del paquete
-      totalKgCalculated = parseFloat(packageSize) * quantity; // Asegurar que packageSize es número
-
+      priceAtSale = selectedPackageDetails.price;
+      totalKgCalculated = parseFloat(packageSize) * quantity;
       if (product.stockInKg < totalKgCalculated) {
-        return res.status(400).json({ message: 'Stock insuficiente para esta venta.' });
+        const err = new Error('Stock insuficiente para esta venta.');
+        return next(err);
       }
       product.stockInKg -= totalKgCalculated;
     } else {
-      // Venta de accesorio/mate/bombilla
-      priceAtSale = product.price; // Precio unitario del producto
+      priceAtSale = product.price;
       if (product.stock < quantity) {
-        return res.status(400).json({ message: 'Stock insuficiente para esta venta.' });
+        const err = new Error('Stock insuficiente para esta venta.');
+        return next(err);
       }
       product.stock -= quantity;
-      // totalKgCalculated permanece 0 para estos productos, o puedes omitirlo al guardar la venta
     }
 
-    // Salvaguarda: Verificar que el precio obtenido sea válido
     if (priceAtSale <= 0) {
-        console.error(`Error: El producto ${product.name} (ID: ${productId}) tiene un precio inválido de ${priceAtSale} al momento de la venta.`);
-        return res.status(500).json({ message: 'Error en la configuración de precios del producto. No se puede vender un producto con precio cero o negativo.' });
+      logger.error(`Error: El producto ${product.name} (ID: ${productId}) tiene un precio inválido de ${priceAtSale} al momento de la venta.`);
+      const err = new Error('Error en la configuración de precios del producto. No se puede vender un producto con precio cero o negativo.');
+      return next(err);
     }
 
     await product.save();
-
     const totalAmount = priceAtSale * quantity;
 
-    const sale = new Sale({
+    const saleData = new Sale({
       product: productId,
       packageSize: (product.type === 'yerba' || product.type === 'yuyo') ? parseFloat(packageSize) : undefined,
       quantity,
       totalKg: (product.type === 'yerba' || product.type === 'yuyo') ? totalKgCalculated : undefined,
-      priceAtSale, // Guardar el precio al momento de la venta
-      totalAmount, // Guardar el monto total calculado
+      priceAtSale,
+      totalAmount,
       type,
-      // Guardar datos del cliente
       customerName,
       customerEmail,
       customerPhone: customerPhone || undefined,
       shippingAddress: shippingAddress || undefined,
     });
-    await sale.save();
+    const newSale = await saleData.save();
+    logger.info(`Venta creada: ${newSale._id} para producto ${product.name}`);
+    res.status(201).json({ message: 'Venta registrada y stock actualizado.', sale: newSale });
 
-    res.status(201).json({ message: 'Venta registrada y stock actualizado.', sale });
   } catch (error) {
-    console.error('Error en createSale:', error);
-    // Verificar si es un error de validación de Mongoose para los campos del cliente
+    logger.error('Error en createSale:', { message: error.message, stack: error.stack, body: req.body });
     if (error.name === 'ValidationError') {
         const messages = Object.values(error.errors).map(val => val.message);
-        return res.status(400).json({ message: `Error de validación: ${messages.join(', ')}` });
+        const err = new Error(`Error de validación: ${messages.join(', ')}`);
+        // err.statusCode = 400;
+        return next(err);
     }
-    res.status(500).json({ message: 'Error al registrar la venta.', error: error.message });
+    next(error);
   }
 };
 
-// Obtener todas las ventas
-const getAllSales = async (req, res) => {
+export const getAllSales = async (req, res, next) => {
   try {
-    const sales = await Sale.find().populate('product', 'name type category'); // Añadido type y category para más detalle
+    const sales = await Sale.find().lean().populate('product', 'name type category').sort({ date: -1 });
     res.json(sales);
   } catch (error) {
-    console.error('Error en getAllSales:', error); // Especificar función en log
-    res.status(500).json({ message: 'Error al obtener las ventas.' });
+    logger.error('Error en getAllSales:', { message: error.message, stack: error.stack });
+    next(error);
   }
 };
 
-//Obtener todas las ventas de un producto especifico
-const getSalesByProduct = async (req, res) => {
+export const getSalesByProduct = async (req, res, next) => {
   try {
     const { productId } = req.params;
-
-    //Verificar que el producto existe primero
     const productExists = await Product.findById(productId);
     if (!productExists) {
-      return res.status(404).json({ message: 'Producto no encontrado.' });
+      const err = new Error('Producto no encontrado.');
+      // err.statusCode = 404;
+      return next(err);
     }
-
-    const sales = await Sale.find({ product: productId })
-      .populate('product', 'name type category') //Detalles del producto
-      .sort({date: -1}); // Ordenar por fecha de venta descendente (más reciente primero)
-
-    if (!sales || sales.length === 0) {       //Verificar si hay ventas
-      return res.status(404).json({ message: 'No se encontraron ventas para este producto.' });
+    const sales = await Sale.find({ product: productId }).lean()
+      .populate('product', 'name type category')
+      .sort({date: -1});
+    if (!sales || sales.length === 0) {
+      // No es un error, simplemente no hay ventas. Devolver array vacío.
+      return res.json([]);
     }
-
-    // Si hay ventas, devolverlas
     res.json(sales);
   } catch (error) {
-    console.error('Error en getSalesByProduct:', error); // Especificar función en log
-    res.status(500).json({ message: 'Error al obtener las ventas del producto.' });
+    logger.error('Error en getSalesByProduct:', { message: error.message, stack: error.stack, params: req.params });
+    next(error);
   }
 };
 
-module.exports = {
-  createSale,
-  getAllSales,
-  getSalesByProduct,
-};
 
 // Este controlador maneja las operaciones CRUD para las ventas
 // y actualiza el stock de los productos después de cada venta.

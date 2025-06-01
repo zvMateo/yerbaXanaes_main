@@ -1,28 +1,23 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const {
+import {
   createProduct,
-  getAllProducts,
-  getProductById,
+  getAllProductsAdmin,
+  getProductByIdAdmin,
   deleteProduct,
   updateProduct,
-} = require('../controllers/productGeneralController');
-const { protectAdmin } = require('../middleware/authMiddleware'); // Importar el middleware
-const { uploadSingleImage } = require('../middleware/multerUpload');
+} from '../controllers/productGeneralController.js';
+import { protectAdmin } from '../middleware/authMiddleware.js';
+import { uploadSingleImage } from '../middleware/multerUpload.js';
 
+router.route('/')
+  .get(protectAdmin, getAllProductsAdmin) // <--- Y usar el nombre corregido aquí
+  .post(protectAdmin, uploadSingleImage, createProduct);
 
-//Rutas publicas (para la tienda online)
-  // Listar todos los productos
-  router.get('/', getAllProducts);
- 
-// Necesitarás una ruta para obtener un producto por ID para la vista de detalle de la tienda
-router.get('/:id', getProductById); // Asumiendo que tienes getProductById en tu controlador
+router.route('/:id')
+  .get(protectAdmin, getProductByIdAdmin) // <--- Y aquí
+  .put(protectAdmin, uploadSingleImage, updateProduct)
+  .delete(protectAdmin, deleteProduct);
 
-
-//Rutas protegidas (para el administrador)
-  router.post('/', protectAdmin, uploadSingleImage, createProduct); // Solo admin puede crear
-router.put('/:id', protectAdmin, uploadSingleImage, updateProduct); // Solo admin puede actualizar
-router.delete('/:id', protectAdmin, deleteProduct); // Solo admin puede eliminar
-
-module.exports = router;
+export default router;
 // Este archivo define las rutas para las operaciones CRUD de los productos

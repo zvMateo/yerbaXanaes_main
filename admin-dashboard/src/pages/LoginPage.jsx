@@ -27,7 +27,7 @@ function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center p-4">
       <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">
+        <h1 className="text-3xl font-bold text-center text-(--primary-color) mb-6">
           Admin YerbaXanaes
         </h1>
         <form onSubmit={handleSubmit}>
@@ -36,7 +36,7 @@ function LoginPage() {
               Email
             </label>
             <input
-              className="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-(--accent-color) focus:border-transparent"
               id="email"
               type="email"
               placeholder="admin@example.com"
@@ -50,7 +50,7 @@ function LoginPage() {
               Contraseña
             </label>
             <input
-              className="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-(--accent-color) focus:border-transparent"
               id="password"
               type="password"
               placeholder="******************"
@@ -62,7 +62,7 @@ function LoginPage() {
           {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
           <div className="flex items-center justify-between">
             <button
-              className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`w-full bg-(--primary-color) hover:bg-(--secondary-color) text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               type="submit"
               disabled={loading}
             >

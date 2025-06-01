@@ -1,53 +1,45 @@
-const jwt = require('jsonwebtoken');
-const AdminUser = require('../models/AdminUser'); // Lo necesitaremos para verificar si el usuario aún existe
-// dotenv ya debería estar cargado por server.js, pero si este middleware se usa en un contexto donde no,
-// podrías añadir require('dotenv').config({ path: '../.env' }); aquí, ajustando la ruta.
+// filepath: c:\Users\Usuario\OneDrive\Escritorio\ecommerce-yerbaxanaes\server\middleware\authMiddleware.js
+import jwt from 'jsonwebtoken';
+import AdminUser from '../models/AdminUser.js';
+import logger from '../config/logger.js';
 
-const protectAdmin = async (req, res, next) => {
+export const protectAdmin = async (req, res, next) => {
   let token;
-
-  // Los tokens JWT suelen enviarse en la cabecera Authorization con el formato "Bearer <token>"
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
-      // 1. Extraer el token de la cabecera
-      token = req.headers.authorization.split(' ')[1]; // Obtiene la parte del token
-
-      // 2. Verificar el token
+      token = req.headers.authorization.split(' ')[1];
       const jwtSecret = process.env.JWT_SECRET;
       if (!jwtSecret) {
-        console.error("Error Crítico en protectAdmin: JWT_SECRET no está definido.");
-        // No envíes este detalle al cliente en producción, loguealo en el servidor.
-        return res.status(500).json({ message: 'Error de configuración del servidor.' });
+        logger.error("Error Crítico en protectAdmin: JWT_SECRET no está definido.");
+        const err = new Error('Error de configuración del servidor.');
+        // err.statusCode = 500;
+        return next(err);
       }
 
       const decoded = jwt.verify(token, jwtSecret);
-
-      // 3. Adjuntar el usuario administrador al objeto req (sin la contraseña)
-      // Buscamos al usuario en la BD para asegurarnos de que aún existe y no ha sido eliminado
-      // o sus permisos cambiados desde que se emitió el token.
       req.admin = await AdminUser.findById(decoded.adminId).select('-password');
 
       if (!req.admin) {
-        // Si el usuario del token ya no existe en la BD
-        return res.status(401).json({ message: 'No autorizado, usuario no encontrado.' });
+        const err = new Error('No autorizado, usuario no encontrado.');
+        // err.statusCode = 401;
+        return next(err);
       }
-
-      next(); // Si todo está bien, pasar al siguiente middleware o controlador de ruta
+      next();
     } catch (error) {
-      console.error('Error de autenticación de token:', error.message);
+      logger.error('Error de autenticación de token:', { message: error.message, token });
+      const err = new Error('No autorizado, token inválido.');
+      // err.statusCode = 401;
       if (error.name === 'JsonWebTokenError') {
-        return res.status(401).json({ message: 'No autorizado, token inválido.' });
+        // err.message = 'Token JWT malformado o inválido.'; // Más específico
+      } else if (error.name === 'TokenExpiredError') {
+        // err.message = 'Token JWT expirado.'; // Más específico
       }
-      if (error.name === 'TokenExpiredError') {
-        return res.status(401).json({ message: 'No autorizado, token expirado.' });
-      }
-      return res.status(401).json({ message: 'No autorizado, fallo en la verificación del token.' });
+      return next(err);
     }
   }
-
   if (!token) {
-    res.status(401).json({ message: 'No autorizado, no se proporcionó token.' });
+    const err = new Error('No autorizado, no se proporcionó token.');
+    // err.statusCode = 401;
+    return next(err);
   }
 };
-
-module.exports = { protectAdmin };
