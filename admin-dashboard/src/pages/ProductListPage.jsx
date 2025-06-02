@@ -5,6 +5,7 @@ import productService from '../services/productService';
 import { PencilSquareIcon, TrashIcon, PlusCircleIcon, CubeIcon, FunnelIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import ConfirmationModal from '../components/ConfirmationModal';
+import ProductRowSkeleton from '../components/ProductRowSkeleton';
 
 // Función de utilidad Debounce
 function debounce(func, delay) {
@@ -22,7 +23,7 @@ function debounce(func, delay) {
 function ProductListPage() {
   const [products, setProducts] = useState([]); // Todos los productos originales
   const [filteredProducts, setFilteredProducts] = useState([]); // Productos después de aplicar filtros y búsqueda
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   // Estado para el modal de confirmación
@@ -43,7 +44,7 @@ function ProductListPage() {
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   const fetchProducts = useCallback(async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const data = await productService.getAllProducts();
       setProducts(data);
@@ -160,7 +161,7 @@ function ProductListPage() {
   }, [products]);
 
 
-  if (loading && products.length === 0) return <p className="text-center text-gray-600 mt-10">Cargando productos...</p>;
+  // if (loading && products.length === 0) return <p className="text-center text-gray-600 mt-10">Cargando productos...</p>;
 
   return (
     <div className="container mx-auto p-4 md:p-6">
@@ -241,6 +242,7 @@ function ProductListPage() {
                   setSelectedCategory('');
                   setSelectedType('');
                   setSearchTerm('');
+                  setDebouncedSearchTerm(''); // Limpiar el término de búsqueda debounced
                 }}
                 className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-(--text-color) bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-colors"
               >
@@ -252,16 +254,38 @@ function ProductListPage() {
         </div>
       </div>
 
-      {filteredProducts.length === 0 && !loading ? (
-         <div className="text-center py-10">
+       {/* Condición para mostrar esqueletos o mensaje de "No hay productos" */}
+      {loading && products.length === 0 ? (
+        <div className="bg-white shadow-md rounded-lg overflow-x-auto">
+          <table className="min-w-full leading-normal">
+            <thead>
+              {/* Puedes mostrar un esqueleto de cabecera o la cabecera real */}
+              <tr className="bg-yrbx-olive/30 text-left text-yrbx-charcoal uppercase text-sm"> {/* Ajustado colores */}
+                <th className="px-5 py-3 border-b-2 border-gray-200">Nombre</th>
+                <th className="px-5 py-3 border-b-2 border-gray-200">Categoría</th>
+                <th className="px-5 py-3 border-b-2 border-gray-200">Tipo</th>
+                <th className="px-5 py-3 border-b-2 border-gray-200">Stock</th>
+                <th className="px-5 py-3 border-b-2 border-gray-200">Estado</th>
+                <th className="px-5 py-3 border-b-2 border-gray-200 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: itemsPerPage }).map((_, index) => ( // Muestra 'itemsPerPage' esqueletos
+                <ProductRowSkeleton key={index} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : filteredProducts.length === 0 && !loading ? (
+          <div className="text-center py-10">
             <CubeIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <p className="text-xl text-gray-500 mb-2">
-              {selectedCategory || selectedType ? "No hay productos que coincidan con los filtros." : "No hay productos para mostrar."}
+              {selectedCategory || selectedType || debouncedSearchTerm  ? "No hay productos que coincidan con los filtros." : "No hay productos para mostrar."}
             </p>
             <p className="text-gray-400 mb-6">
-              {selectedCategory || selectedType ? "Intenta ajustar o limpiar los filtros." : "¡Comienza añadiendo tu primer producto!"}
+              {selectedCategory || selectedType || debouncedSearchTerm ? "Intenta ajustar o limpiar los filtros." : "¡Comienza añadiendo tu primer producto!"}
             </p>
-            {!(selectedCategory || selectedType) && (
+            {!(selectedCategory || selectedType || debouncedSearchTerm) && (
               <button
                 onClick={() => navigate('/admin/products/new')}
                 className="bg-(--accent-color) hover:opacity-90 text-white font-semibold py-2.5 px-6 rounded-lg shadow hover:shadow-md transition-all duration-150"
