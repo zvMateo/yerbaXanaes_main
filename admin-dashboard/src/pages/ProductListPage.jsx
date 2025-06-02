@@ -15,6 +15,7 @@ function ProductListPage() {
   // Estado para el modal de confirmación
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,6 +90,7 @@ function ProductListPage() {
 
   const handleDeleteConfirmed = async () => {
     if (!productToDelete) return;
+    setIsDeleting(true); //MODO CARGANDO
     try {
       await productService.deleteProduct(productToDelete._id);
       toast.success(`¡Producto "${productToDelete.name}" eliminado exitosamente!`);
@@ -99,6 +101,7 @@ function ProductListPage() {
       const errorMessage = err.response?.data?.message || err.message || 'Error al eliminar el producto.';
       toast.error(errorMessage);
     } finally {
+      setIsDeleting(false); // DESACTIVAR MODO CARGANDO
       closeDeleteConfirmationModal();
     }
   };
@@ -363,6 +366,7 @@ function ProductListPage() {
         message={`¿Estás seguro de que quieres eliminar el producto "${productToDelete?.name || ''}"? Esta acción no se puede deshacer.`}
         confirmButtonText="Eliminar"
         confirmButtonColor="red"
+        isConfirming={isDeleting}
       />
     </div>
   );
