@@ -2,7 +2,6 @@
 import apiClient from './api';
 
 const API_ROUTE = '/products-general'; // Ruta base para los productos en el backend
-
 const getAllProducts = async () => {
   try {
     const response = await apiClient.get(API_ROUTE);

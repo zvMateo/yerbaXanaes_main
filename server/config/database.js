@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import logger from './logger.js'; // Asumiendo que logger.js está en la misma carpeta config
 
-
 // No definas MONGO_URI aquí fuera de la función si dependes de dotenv en otro archivo.
 
 const connectDB = async () => {

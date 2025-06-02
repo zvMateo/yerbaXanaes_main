@@ -1,13 +1,11 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import authService from '../services/authService';
-// Asegúrate de tener instalados los iconos: npm install @heroicons/react
 import { CubeIcon, PowerIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
 
 function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-
   const handleLogout = () => {
     authService.logout();
     navigate('/login');
@@ -15,7 +13,7 @@ function DashboardLayout() {
 
   const navItems = [
     { name: 'Productos', path: '/admin/products', icon: CubeIcon },
-     { name: 'Pedidos', path: '/admin/orders', icon: ShoppingCartIcon }, // Ejemplo futuro
+    { name: 'Pedidos', path: '/admin/orders', icon: ShoppingCartIcon }, // Ejemplo futuro
     // Añade más items aquí cuando tengas más secciones
   ];
 
@@ -76,7 +74,6 @@ function DashboardLayout() {
           </button>
         </div>
       </aside>
-
       {/* Contenido Principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header del Contenido */}

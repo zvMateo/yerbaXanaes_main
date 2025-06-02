@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import authService from '../services/authService'; // Asumimos que tu authService puede verificar el token o parsearlo
+// import authService from '../services/authService'; // Asumimos que tu authService puede verificar el token o parsearlo
 
 const AuthContext = createContext(null);
 
@@ -58,7 +58,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('adminInfo', JSON.stringify(newAdminData));
     setAdmin(newAdminData);
   };
-
 
   return (
     <AuthContext.Provider value={{ token, admin, isAuthenticated, login, logout, updateAdminInfo, loading }}>

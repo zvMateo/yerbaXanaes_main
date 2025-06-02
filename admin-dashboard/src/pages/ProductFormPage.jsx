@@ -208,7 +208,6 @@ function ProductFormPage() {
   const inputBaseClasses = "w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-(--secondary-color) focus:border-(--secondary-color) disabled:bg-gray-100 disabled:cursor-not-allowed";
   const labelBaseClasses = "block text-sm font-medium text-gray-700 mb-1";
 
-
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-3xl">
       <h1 className="text-3xl font-semibold text-(--text-color) mb-8"> {/* Usando (--text-color) */}

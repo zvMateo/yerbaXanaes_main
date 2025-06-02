@@ -3,7 +3,6 @@ import fs from 'fs'; // Para verificar/crear directorio de logs
 import path from 'path'; // Para construir rutas de forma segura
 
 const { combine, timestamp, printf, colorize, align } = winston.format;
-
 const logDir = 'logs'; // Directorio para los archivos de log
 
 // Crear el directorio de logs si no existe

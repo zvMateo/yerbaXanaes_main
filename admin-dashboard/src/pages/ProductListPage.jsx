@@ -6,6 +6,19 @@ import { PencilSquareIcon, TrashIcon, PlusCircleIcon, CubeIcon, FunnelIcon, Magn
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import ConfirmationModal from '../components/ConfirmationModal';
 
+// Función de utilidad Debounce
+function debounce(func, delay) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, delay);
+  };
+}
+
 function ProductListPage() {
   const [products, setProducts] = useState([]); // Todos los productos originales
   const [filteredProducts, setFilteredProducts] = useState([]); // Productos después de aplicar filtros y búsqueda
@@ -27,6 +40,7 @@ function ProductListPage() {
 
 // Estado para la búsqueda
   const [searchTerm, setSearchTerm] = useState(''); // Para el input de búsqueda
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -50,6 +64,20 @@ function ProductListPage() {
     fetchProducts();
   }, [fetchProducts]);
 
+  // Efecto para manejar el debounce de la búsqueda
+  const debouncedSetSearch = useCallback(
+    debounce((value) => {
+      setDebouncedSearchTerm(value);
+    }, 300), // 300 ms de debounce
+    [] // setDebouncedSearchTerm es estable, debounce es externa y estable.
+  );
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value); // Actualiza el valor del input inmediatamente
+    debouncedSetSearch(value); // Llama a la función debounced para actualizar el término de filtrado
+  };
+
   // Efecto para aplicar filtros cuando cambian los productos o los valores de los filtros
   useEffect(() => {
     let tempProducts = [...products];
@@ -62,16 +90,16 @@ function ProductListPage() {
       tempProducts = tempProducts.filter(product => product.type === selectedType);
     }
     
-    // Aplicar filtro de búsqueda por nombre
-    if (searchTerm) {
+    // Aplicar filtro de búsqueda por nombre usando el término "debounced"
+    if (debouncedSearchTerm) {
       tempProducts = tempProducts.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+        product.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
       );
     }
 
     setFilteredProducts(tempProducts);
     setCurrentPage(1); // Resetear a la primera página cuando los filtros cambian
-  }, [products, selectedCategory, selectedType, searchTerm]);
+  }, [products, selectedCategory, selectedType, debouncedSearchTerm]);
 
 
   const handleEdit = (productId) => {
@@ -166,7 +194,7 @@ function ProductListPage() {
                 className="mt-1 block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-yrbx-olive focus:border-yrbx-olive sm:text-sm"
                 placeholder="Ej: Yerba Clásica"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
               />
             </div>
           </div>

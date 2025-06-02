@@ -1,8 +1,6 @@
-// filepath: c:\Users\Usuario\OneDrive\Escritorio\ecommerce-yerbaxanaes\admin-dashboard\src\services\authService.js
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:3000/api/auth/admin'; // URL base de tu API
-
 const login = async (email, password) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/login`, { email, password });
@@ -32,7 +30,6 @@ const getCurrentUserToken = () => {
 
 // Podrías añadir una función para verificar la validez del token con el backend si es necesario
 // const verifyToken = async (token) => { ... }
-
 export default {
   login,
   logout,

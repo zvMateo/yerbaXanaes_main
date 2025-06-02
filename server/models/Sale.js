@@ -67,8 +67,6 @@ const saleSchema = new mongoose.Schema({
 // Podrías considerar agrupar múltiples productos en un "Pedido" (Order)
 // y que cada "Pedido" tenga múltiples "Sale" items.
 // Por ahora, mantenemos la estructura simple de una venta por producto/paquete.
-
-
 const Sale = mongoose.model('Sale', saleSchema);
 
 export default Sale;

@@ -98,8 +98,6 @@ productSchema.index({ isActive: 1 });
 
 const Product = mongoose.model('Product', productSchema);
 
-
-
 export default Product;
 
 // Este modelo se usará para interactuar con la colección de productos en la base de datos

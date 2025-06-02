@@ -7,16 +7,12 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ProductFormPage from './pages/ProductFormPage';
 import { useAuth } from './contexts/AuthContext';
 
-// Quita la importación de App.css si no la usas directamente aquí
-// import './App.css'
-
 function App() {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return <p className="text-center text-gray-600 mt-10">Cargando aplicación...</p>;
   }
-
   return (
     <>
       <ToastContainer
@@ -31,10 +27,8 @@ function App() {
         pauseOnHover
         theme="colored"
       />
-    
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-
         {/* Rutas Protegidas bajo /admin */}
         {/* ProtectedRoute envuelve a DashboardLayout y sus rutas hijas */}
         <Route 
@@ -55,7 +49,6 @@ function App() {
           {/* <Route path="sales" element={<SalesAnalyticsPage />} /> */}
           {/* <Route path="settings" element={<SettingsPage />} /> */}
         </Route>
-      
         {/* Redirección para cualquier ruta no encontrada */}
         <Route 
           path="*" 

@@ -10,7 +10,6 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth(); // Obtener la función login del contexto
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);

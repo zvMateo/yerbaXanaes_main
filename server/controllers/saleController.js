@@ -3,7 +3,6 @@ import Sale from '../models/Sale.js';
 import Product from '../models/Product.js';
 import logger from '../config/logger.js';
 
-
 // Registrar una venta y descontar stock
 export const createSale = async (req, res, next) => {
   try {
@@ -130,7 +129,6 @@ export const getSalesByProduct = async (req, res, next) => {
     next(error);
   }
 };
-
 
 // Este controlador maneja las operaciones CRUD para las ventas
 // y actualiza el stock de los productos después de cada venta.

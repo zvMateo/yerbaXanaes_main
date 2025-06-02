@@ -96,7 +96,6 @@ const seedAdminUser = async () => {
     }
   }
 };
-
 // Ejecutar la función de seeder
 seedAdminUser()
   .then(() => {
