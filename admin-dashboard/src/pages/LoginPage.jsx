@@ -1,24 +1,30 @@
-// filepath: c:\Users\Usuario\OneDrive\Escritorio\ecommerce-yerbaxanaes\admin-dashboard\src\pages\LoginPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify'; // <--- IMPORTAR TOAST
 import authService from '../services/authService';
+import { useAuth } from '../contexts/AuthContext.jsx'; // Asumiendo que usas AuthContext
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth(); // Obtener la función login del contexto
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
     try {
-      await authService.login(email, password);
-      navigate('/admin/products'); // Redirige al dashboard después del login exitoso
+      // El servicio authService.login ahora debería devolver los datos del usuario/token
+      // y el AuthContext se encargará de almacenarlos.
+      const userData = await authService.login(email, password);
+      login(userData.token, userData.admin); // Actualizar el estado de autenticación global
+      toast.success('¡Inicio de sesión exitoso!'); // <--- NOTIFICACIÓN DE ÉXITO
+      navigate('/admin/products');
     } catch (err) {
-      setError(err.message || 'Error al iniciar sesión. Intente nuevamente.');
+      // Intentar obtener el mensaje de error específico del backend
+      const errorMessage = err.response?.data?.message || err.message || 'Error al iniciar sesión. Intente nuevamente.';
+      toast.error(errorMessage); // <--- NOTIFICACIÓN DE ERROR
     } finally {
       setLoading(false);
     }
@@ -43,6 +49,7 @@ function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
           <div className="mb-6">
@@ -57,9 +64,10 @@ function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={loading}
             />
           </div>
-          {error && <p className="text-red-500 text-xs italic mb-4">{error}</p>}
+          {/* El estado 'error' local ya no es necesario si se maneja con toasts */}
           <div className="flex items-center justify-between">
             <button
               className={`w-full bg-(--primary-color) hover:bg-(--secondary-color) text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
