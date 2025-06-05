@@ -2,7 +2,7 @@
 import apiClient from './api';
 
 const API_ROUTE = '/products-general'; // Ruta base para los productos en el backend
-const getAllProducts = async () => {
+export const getAllProducts = async () => {
   try {
     const response = await apiClient.get(API_ROUTE);
     return response.data; // Asume que el backend devuelve un array de productos
@@ -12,7 +12,7 @@ const getAllProducts = async () => {
   }
 };
 
-const getProductById = async (productId) => {
+export const getProductById = async (productId) => {
   try {
     const response = await apiClient.get(`${API_ROUTE}/${productId}`);
     return response.data; // Asume que el backend devuelve un solo producto
@@ -23,7 +23,7 @@ const getProductById = async (productId) => {
 };
 
 // Para crear y actualizar productos, necesitarás enviar FormData si incluyes imágenes.
-const createProduct = async (productData) => { // productData debe ser un objeto FormData
+export const createProduct = async (productData) => { // productData debe ser un objeto FormData
   try {
     const response = await apiClient.post(API_ROUTE, productData, {
       headers: {
@@ -37,7 +37,7 @@ const createProduct = async (productData) => { // productData debe ser un objeto
   }
 };
 
-const updateProduct = async (productId, productData) => { // productData debe ser un objeto FormData
+export const updateProduct = async (productId, productData) => { // productData debe ser un objeto FormData
   try {
     const response = await apiClient.put(`${API_ROUTE}/${productId}`, productData, {
       headers: {
@@ -51,7 +51,7 @@ const updateProduct = async (productId, productData) => { // productData debe se
   }
 };
 
-const deleteProduct = async (productId) => {
+export const deleteProduct = async (productId) => {
   try {
     const response = await apiClient.delete(`${API_ROUTE}/${productId}`);
     return response.data; // Usualmente un mensaje de éxito o el item eliminado

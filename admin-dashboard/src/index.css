@@ -11,7 +11,7 @@
 }
 
 /* Puedes añadir estilos base globales adicionales aquí si es necesario */
-body {
+html, body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
     Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
@@ -19,4 +19,15 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f7fafc; /* Un gris claro por defecto para el body */
+  height: 100%;
+  overflow: hidden; /* Evita el scroll */
+}
+
+#root {
+  height: 100%;
+}
+
+.admin-layout {
+  height: 100vh;
+  overflow: hidden; /* Evita el scroll en el layout */
 }

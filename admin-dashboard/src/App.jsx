@@ -1,10 +1,12 @@
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom'; // Asegúrate de importar Outlet si no lo tienes
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import LoginPage from './pages/LoginPage';
-import DashboardLayout from './pages/DashboardLayout'; // Asumo que esta es la ruta correcta
+import DashboardLayout from './pages/DashboardLayout';
+import DashboardMain from './pages/DashboardMain'; // 🆕 AGREGAR IMPORT
 import ProductListPage from './pages/ProductListPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProductFormPage from './pages/ProductFormPage';
+import OrderListPage from './pages/OrderListPage';
 import { useAuth } from './contexts/AuthContext';
 
 function App() {
@@ -13,6 +15,7 @@ function App() {
   if (loading) {
     return <p className="text-center text-gray-600 mt-10">Cargando aplicación...</p>;
   }
+  
   return (
     <>
       <ToastContainer
@@ -29,27 +32,24 @@ function App() {
       />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        {/* Rutas Protegidas bajo /admin */}
-        {/* ProtectedRoute envuelve a DashboardLayout y sus rutas hijas */}
+        
         <Route 
           path="/admin" 
           element={
             <ProtectedRoute>
-              <DashboardLayout /> {/* DashboardLayout debe tener un <Outlet /> para renderizar las rutas hijas */}
+              <DashboardLayout />
             </ProtectedRoute>
           }
         >
-          {/* Estas rutas se renderizarán donde DashboardLayout tenga su <Outlet /> */}
-          <Route index element={<Navigate to="products" replace />} /> {/* /admin -> /admin/products */}
-          <Route path="products" element={<ProductListPage />} />
-          <Route path="products/new" element={<ProductFormPage />} /> {/* Eliminado 'mode' prop, ProductFormPage lo infiere */}
-          <Route path="products/edit/:productId" element={<ProductFormPage />} /> {/* Eliminado 'mode' prop */}
           
-          {/* Otras rutas del dashboard (ej. sales, settings) irían aquí como hijas de la ruta /admin */}
-          {/* <Route path="sales" element={<SalesAnalyticsPage />} /> */}
-          {/* <Route path="settings" element={<SettingsPage />} /> */}
+          <Route index element={<DashboardMain />} /> 
+          
+          <Route path="products" element={<ProductListPage />} />
+          <Route path="products/new" element={<ProductFormPage />} />
+          <Route path="products/edit/:productId" element={<ProductFormPage />} />
+          <Route path="orders" element={<OrderListPage />} />
         </Route>
-        {/* Redirección para cualquier ruta no encontrada */}
+        
         <Route 
           path="*" 
           element={
