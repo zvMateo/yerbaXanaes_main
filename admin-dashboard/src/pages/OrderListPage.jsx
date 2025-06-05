@@ -11,7 +11,7 @@ import {
   Clock,
   AlertCircle,
   ChevronDown,
-  Calendar
+  Calendar,
 } from 'lucide-react';
 
 const OrderListPage = () => {
@@ -26,8 +26,6 @@ const OrderListPage = () => {
   // Estados posibles de los pedidos
   const orderStatuses = {
     pending: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-    processing: { label: 'Procesando', color: 'bg-blue-100 text-blue-800', icon: Package },
-    shipped: { label: 'Enviado', color: 'bg-purple-100 text-purple-800', icon: Truck },
     delivered: { label: 'Entregado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
     cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-800', icon: AlertCircle }
   };
@@ -60,7 +58,7 @@ const OrderListPage = () => {
             phone: '+54 9 11 9876-5432'
           },
           date: '2025-06-04T15:45:00',
-          status: 'processing',
+          status: 'delivered',
           total: 2800.00,
           items: [
             { name: 'Yerba La Merced 1kg', quantity: 2, price: 1400 }
@@ -75,7 +73,7 @@ const OrderListPage = () => {
             phone: '+54 9 351 123-4567'
           },
           date: '2025-06-03T09:15:00',
-          status: 'shipped',
+          status: 'delivered',
           total: 4150.00,
           items: [
             { name: 'Yerba Playadito 1kg', quantity: 3, price: 1350 },

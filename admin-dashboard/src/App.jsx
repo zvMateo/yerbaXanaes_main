@@ -7,6 +7,7 @@ import ProductListPage from './pages/ProductListPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProductFormPage from './pages/ProductFormPage';
 import OrderListPage from './pages/OrderListPage';
+import OrderDetailPage from './pages/OrderDetailPage';
 import { useAuth } from './contexts/AuthContext';
 
 function App() {
@@ -48,6 +49,9 @@ function App() {
           <Route path="products/new" element={<ProductFormPage />} />
           <Route path="products/edit/:productId" element={<ProductFormPage />} />
           <Route path="orders" element={<OrderListPage />} />
+          <Route path="orders/:orderId" element={<OrderDetailPage />} />
+          
+          {/* Otras rutas protegidas pueden ir aquí */}
         </Route>
         
         <Route 
