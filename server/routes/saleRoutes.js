@@ -4,6 +4,9 @@ import {
     createSale,
     getAllSales,
     getSalesByProduct,
+    getSaleByOrderNumber,
+    updateOrderStatus,
+    getSalesByCustomer
 } from '../controllers/saleController.js';
 import { protectAdmin } from '../middleware/authMiddleware.js';
 
@@ -15,10 +18,14 @@ import { protectAdmin } from '../middleware/authMiddleware.js';
 // O, más comúnmente, la tienda pública crea ventas sin token de admin,
 // y el dashboard del admin usa esta ruta CON token de admin.
 // Para simplificar y cumplir tu requisito de que el admin cree ventas:
-router.post('/', protectAdmin, createSale); // Protegida: Admin crea ventas desde el dashboard
+// Rutas existentes mejoradas
+router.post('/', authMiddleware, createSale);
+router.get('/', authMiddleware, getAllSales);
+router.get('/product/:productId', authMiddleware, getSalesByProduct);
 
-// Rutas Protegidas para ver ventas (solo admin)
-router.get('/', protectAdmin, getAllSales);
-router.get('/product/:productId', protectAdmin, getSalesByProduct);
+// ✨ NUEVAS RUTAS
+router.get('/order/:orderNumber', authMiddleware, getSaleByOrderNumber);
+router.put('/:saleId/status', authMiddleware, updateOrderStatus);
+router.get('/customer/:customerEmail', authMiddleware, getSalesByCustomer);
 
 export default router;

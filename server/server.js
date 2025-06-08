@@ -68,6 +68,7 @@ app.use('/api/auth/login', authLimiter); // Aplicar limiter solo al endpoint de 
 app.use('/api/auth', authRoutes);
 app.use('/api/products-general', productGeneralRoutes);
 app.use('/api/sales', saleRoutes);
+app.use('/api/customers', customerRoutes);
 // Aquí se pueden agregar más rutas según sea necesario
 
 // --- MANEJO DE ERRORES ---

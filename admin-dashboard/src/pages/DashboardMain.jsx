@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   ShoppingBag, 
   TrendingUp, 
@@ -8,7 +9,9 @@ import {
   MapPin,
   Eye,
   Edit,
-  Percent
+  Percent,
+  RefreshCw,
+  Download
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -27,15 +30,15 @@ import {
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-// Datos de ejemplo - estos vendrán de tu API más adelante
+// ✅ DATOS MEJORADOS CON MÁS DETALLE
 const salesData = [
-  { date: '2024-01-01', ventas: 4000, pedidos: 12 },
-  { date: '2024-01-02', ventas: 3000, pedidos: 8 },
-  { date: '2024-01-03', ventas: 5000, pedidos: 15 },
-  { date: '2024-01-04', ventas: 2780, pedidos: 9 },
-  { date: '2024-01-05', ventas: 1890, pedidos: 6 },
-  { date: '2024-01-06', ventas: 2390, pedidos: 11 },
-  { date: '2024-01-07', ventas: 3490, pedidos: 14 },
+  { date: '2024-06-01', ventas: 24750, pedidos: 8, nuevosClientes: 3 },
+  { date: '2024-06-02', ventas: 18200, pedidos: 6, nuevosClientes: 1 },
+  { date: '2024-06-03', ventas: 32100, pedidos: 12, nuevosClientes: 4 },
+  { date: '2024-06-04', ventas: 28500, pedidos: 9, nuevosClientes: 2 },
+  { date: '2024-06-05', ventas: 41300, pedidos: 15, nuevosClientes: 6 },
+  { date: '2024-06-06', ventas: 35800, pedidos: 11, nuevosClientes: 3 },
+  { date: '2024-06-07', ventas: 29600, pedidos: 10, nuevosClientes: 2 },
 ];
 
 const topProducts = [
@@ -54,7 +57,7 @@ const geographicData = [
   { region: 'Otros', pedidos: 19, percentage: 15 },
 ];
 
-const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1'];
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const DashboardMain = () => {
   const [timeFilter, setTimeFilter] = useState('7d');
@@ -83,40 +86,73 @@ const DashboardMain = () => {
     }, 1000);
   }, [timeFilter]);
 
-// ...existing code...
+  // ✅ COMPONENTE STATCARD MEJORADO
+  const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = false, suffix = "" }) => {
+    const Icon = icon;
+    
+    // ✅ COLORES MEJORADOS CON TU TEMA
+    const colorClasses = {
+      green: { bg: 'bg-emerald-50', border: 'border-emerald-200', icon: 'text-emerald-600', iconBg: 'bg-emerald-100' },
+      blue: { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600', iconBg: 'bg-blue-100' },
+      purple: { bg: 'bg-purple-50', border: 'border-purple-200', icon: 'text-purple-600', iconBg: 'bg-purple-100' },
+      indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200', icon: 'text-indigo-600', iconBg: 'bg-indigo-100' },
+      red: { bg: 'bg-red-50', border: 'border-red-200', icon: 'text-red-600', iconBg: 'bg-red-100' },
+      yellow: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'text-amber-600', iconBg: 'bg-amber-100' },
+    };
 
-const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = false, suffix = "" }) => {
-  const Icon = icon;
-  
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 border-l-4" style={{ borderLeftColor: `var(--${color}-500, #3B82F6)` }}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {isCurrency ? '$' : ''}{value.toLocaleString()}{suffix}
-          </p>
-          {change && (
-            <p className={`text-sm ${change >= 0 ? 'text-green-600' : 'text-red-600'} flex items-center mt-1`}>
-              <TrendingUp className={`h-4 w-4 mr-1 ${change < 0 ? 'rotate-180' : ''}`} />
-              {Math.abs(change)}% vs período anterior
+    const colors = colorClasses[color] || colorClasses.blue;
+    
+    return (
+      <div className={`${colors.bg} rounded-xl shadow-sm p-6 border ${colors.border} hover:shadow-lg transition-all duration-200`}>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+            <p className="text-2xl font-bold text-gray-900 mb-2">
+              {isCurrency ? '$' : ''}{value.toLocaleString('es-AR')}{suffix}
             </p>
-          )}
-        </div>
-        <div className={`p-3 rounded-full bg-${color}-100`}>
-          <Icon className={`h-6 w-6 text-${color}-600`} />
+            {change !== undefined && (
+              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${
+                change >= 0 
+                  ? 'bg-green-100 text-green-800' 
+                  : 'bg-red-100 text-red-800'
+              }`}>
+                <TrendingUp className={`h-3 w-3 mr-1 ${change < 0 ? 'rotate-180' : ''}`} />
+                {Math.abs(change)}%
+              </div>
+            )}
+          </div>
+          <div className={`p-3 rounded-xl ${colors.iconBg}`}>
+            <Icon className={`h-6 w-6 ${colors.icon}`} />
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
-// ...existing code....
+  // ✅ FUNCIONES ÚTILES AGREGADAS
+  const exportData = () => {
+    console.log('Exportando datos...');
+    const data = { salesData, topProducts, geographicData, dashboardData };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboard-${format(new Date(), 'yyyy-MM-dd')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const refreshData = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+  };
 
   const LowStockAlert = ({ product }) => (
-    <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg mb-2">
+    <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors duration-150">
       <div className="flex items-center">
-        <AlertTriangle className="h-5 w-5 text-red-500 mr-3" />
+        <AlertTriangle className="h-5 w-5 text-red-500 mr-3 flex-shrink-0" />
         <div>
           <p className="text-sm font-medium text-red-900">{product.name}</p>
           <p className="text-xs text-red-600">
@@ -124,14 +160,17 @@ const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = fal
           </p>
         </div>
       </div>
-      <button className="text-red-600 hover:text-red-800">
+      <Link
+        to={`/admin/products/${product.id}`}
+        className="text-red-600 hover:text-red-800 p-1 rounded hover:bg-red-200 transition-colors duration-150"
+      >
         <Edit className="h-4 w-4" />
-      </button>
+      </Link>
     </div>
   );
 
   const ProductRow = ({ product, index }) => (
-    <tr className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+    <tr className="hover:bg-gray-50 transition-colors duration-150">
       <td className="px-6 py-4 whitespace-nowrap">
         <div>
           <div className="text-sm font-medium text-gray-900">{product.name}</div>
@@ -139,10 +178,13 @@ const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = fal
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {product.sold} unidades
+        <div className="flex items-center">
+          <Package className="h-4 w-4 text-gray-400 mr-2" />
+          {product.sold} unidades
+        </div>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        ${product.revenue.toLocaleString()}
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
+        ${product.revenue.toLocaleString('es-AR')}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -154,48 +196,101 @@ const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = fal
         </span>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        <button className="text-blue-600 hover:text-blue-800 mr-2">
-          <Eye className="h-4 w-4" />
-        </button>
-        <button className="text-green-600 hover:text-green-800">
-          <Edit className="h-4 w-4" />
-        </button>
+        <div className="flex items-center space-x-2">
+          <Link
+            to={`/admin/products/${product.id}`}
+            className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-100 transition-colors duration-150"
+          >
+            <Eye className="h-4 w-4" />
+          </Link>
+          <Link
+            to={`/admin/products/${product.id}/edit`}
+            className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-100 transition-colors duration-150"
+          >
+            <Edit className="h-4 w-4" />
+          </Link>
+        </div>
       </td>
     </tr>
   );
 
+  // ✅ LOADING SKELETON MEJORADO
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
+      <div className="space-y-6">
+        {/* Header skeleton */}
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+        </div>
+        
+        {/* Cards skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+              <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Charts skeleton */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-1/4 mb-6"></div>
+            <div className="h-80 bg-gray-200 rounded"></div>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-1/3 mb-6"></div>
+            <div className="h-64 bg-gray-200 rounded"></div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-8">
+      {/* ✅ HEADER MEJORADO */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard Yerba Xanaes</h1>
-          <p className="text-gray-600">Resumen general de tu negocio</p>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard Yerba Xanaes</h1>
+          <p className="text-gray-600 mt-1">
+            Resumen general de tu negocio • {format(new Date(), 'EEEE, dd MMMM yyyy', { locale: es })}
+          </p>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
           <select 
             value={timeFilter} 
             onChange={(e) => setTimeFilter(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="1d">Hoy</option>
             <option value="7d">Últimos 7 días</option>
             <option value="30d">Últimos 30 días</option>
+            <option value="90d">Últimos 3 meses</option>
             <option value="1y">Este año</option>
           </select>
+          <button 
+            onClick={refreshData}
+            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-150"
+            title="Actualizar datos"
+          >
+            <RefreshCw className="h-4 w-4 text-gray-600" />
+          </button>
+          <button 
+            onClick={exportData}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors duration-150 flex items-center"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+      {/* ✅ KPI CARDS MEJORADAS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           title="Ventas Totales"
           value={dashboardData.totalSales}
@@ -240,35 +335,74 @@ const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = fal
         />
       </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sales Trend */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tendencia de Ventas</h3>
-          <ResponsiveContainer width="100%" height={300}>
+      {/* ✅ CHARTS SECTION MEJORADA */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Sales Trend - Más grande */}
+        <div className="xl:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Tendencia de Ventas</h3>
+            <div className="flex items-center space-x-4 text-sm">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                <span className="text-gray-600">Ventas</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                <span className="text-gray-600">Pedidos</span>
+              </div>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={350}>
             <AreaChart data={salesData}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <defs>
+                <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis 
                 dataKey="date" 
                 tickFormatter={(date) => format(new Date(date), 'dd/MM', { locale: es })}
+                stroke="#64748b"
+                fontSize={12}
               />
-              <YAxis />
+              <YAxis stroke="#64748b" fontSize={12} />
               <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
                 labelFormatter={(date) => format(new Date(date), 'dd MMMM yyyy', { locale: es })}
                 formatter={(value, name) => [
-                  name === 'ventas' ? `$${value.toLocaleString()}` : value,
+                  name === 'ventas' ? `$${value.toLocaleString('es-AR')}` : `${value} pedidos`,
                   name === 'ventas' ? 'Ventas' : 'Pedidos'
                 ]}
               />
-              <Area type="monotone" dataKey="ventas" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+              <Area 
+                type="monotone" 
+                dataKey="ventas" 
+                stroke="#3B82F6" 
+                fill="url(#colorVentas)"
+                strokeWidth={2}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="pedidos" 
+                stroke="#10B981" 
+                strokeWidth={2}
+                dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Geographic Sales */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Ventas por Región</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        {/* Geographic Sales mejorado */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Ventas por Región</h3>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
                 data={geographicData}
@@ -277,24 +411,50 @@ const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = fal
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="pedidos"
-                label={({ region, percentage }) => `${region} ${percentage}%`}
+                label={({ percentage }) => `${percentage}%`}
               >
                 {geographicData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip 
+                formatter={(value, name, props) => [`${value} pedidos`, props.payload.region]}
+              />
             </PieChart>
           </ResponsiveContainer>
+          
+          {/* ✅ Leyenda personalizada */}
+          <div className="mt-4 space-y-2">
+            {geographicData.map((entry, index) => (
+              <div key={index} className="flex items-center justify-between text-sm">
+                <div className="flex items-center">
+                  <div 
+                    className="w-3 h-3 rounded-full mr-3" 
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  ></div>
+                  <span className="text-gray-700">{entry.region}</span>
+                </div>
+                <span className="font-medium text-gray-900">{entry.pedidos}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Products and Alerts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Products */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow-md">
+      {/* ✅ PRODUCTS AND ALERTS SECTION MEJORADA */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        {/* Top Products - Ahora más ancho */}
+        <div className="xl:col-span-3 bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Productos Más Vendidos</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Productos Más Vendidos</h3>
+              <Link 
+                to="/admin/products"
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Ver todos
+              </Link>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -317,7 +477,7 @@ const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = fal
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="bg-white divide-y divide-gray-200">
                 {topProducts.map((product, index) => (
                   <ProductRow key={index} product={product} index={index} />
                 ))}
@@ -326,19 +486,28 @@ const StatCard = ({ title, value, icon, change, color = "blue", isCurrency = fal
           </div>
         </div>
 
-        {/* Low Stock Alerts */}
-        <div className="bg-white rounded-lg shadow-md">
+        {/* Low Stock Alerts - Más compacto */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Alertas de Stock Bajo</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Alertas de Stock</h3>
+              <Link 
+                to="/admin/inventory"
+                className="text-red-600 hover:text-red-800 text-sm font-medium"
+              >
+                Ver inventario
+              </Link>
+            </div>
           </div>
-          <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
+          <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
             {[
-              { name: 'Yerba Mate Premium 1kg', stock: 3, unit: 'kg' },
-              { name: 'Mate Acero Inoxidable', stock: 2, unit: 'unidades' },
-              { name: 'Yuyo Digestivo', stock: 1, unit: 'kg' },
-              { name: 'Mate Calabaza Chico', stock: 4, unit: 'unidades' },
-            ].map((product, index) => (
-              <LowStockAlert key={index} product={product} />
+              { id: 1, name: 'Yerba Mate Premium 1kg', stock: 3, unit: 'kg' },
+              { id: 2, name: 'Mate Acero Inoxidable', stock: 2, unit: 'unidades' },
+              { id: 3, name: 'Yuyo Digestivo', stock: 1, unit: 'kg' },
+              { id: 4, name: 'Mate Calabaza Chico', stock: 4, unit: 'unidades' },
+              { id: 5, name: 'Yerba Suave Sin Palo', stock: 2, unit: 'kg' },
+            ].map((product) => (
+              <LowStockAlert key={product.id} product={product} />
             ))}
           </div>
         </div>
