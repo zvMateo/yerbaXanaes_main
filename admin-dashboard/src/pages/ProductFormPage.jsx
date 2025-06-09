@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { toast } from "react-toastify"; // Import consistente para spy en tests
+import { toast } from "react-toastify";
 import { z } from "zod";
 import productService from "../services/productService";
+import LoadingSpinner from "../components/LoadingSpinner";
+import { showToast } from "../components/ToastManager"; // ✅ Importar helper
 import {
   ArrowUpTrayIcon,
   PlusCircleIcon,
@@ -94,7 +96,8 @@ const productSchema = z
     packageSizes: z.array(packageSizeSchema).optional(),
     isActive: z.boolean(),
     image: z.instanceof(File).optional().nullable(),
-  })  .superRefine((data, ctx) => {
+  })
+  .superRefine((data, ctx) => {
     if (data.type === "yerba" || data.type === "yuyo") {
       // Para yerba/yuyo, verificar stockInKg
       // preprocess ya convierte strings vacíos a undefined
@@ -120,8 +123,12 @@ const productSchema = z
       } else {
         const validPackages = data.packageSizes.filter(
           (pkg) =>
-            pkg.sizeInKg !== undefined && pkg.sizeInKg !== null && pkg.sizeInKg > 0 &&
-            pkg.price !== undefined && pkg.price !== null && pkg.price > 0
+            pkg.sizeInKg !== undefined &&
+            pkg.sizeInKg !== null &&
+            pkg.sizeInKg > 0 &&
+            pkg.price !== undefined &&
+            pkg.price !== null &&
+            pkg.price > 0
         );
 
         if (validPackages.length === 0) {
@@ -134,20 +141,14 @@ const productSchema = z
         }
 
         data.packageSizes.forEach((pkg, index) => {
-          if (
-            pkg.sizeInKg === undefined ||
-            pkg.sizeInKg === null
-          ) {
+          if (pkg.sizeInKg === undefined || pkg.sizeInKg === null) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ["packageSizes", index, "sizeInKg"],
               message: "Tamaño (Kg) es requerido",
             });
           }
-          if (
-            pkg.price === undefined ||
-            pkg.price === null
-          ) {
+          if (pkg.price === undefined || pkg.price === null) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ["packageSizes", index, "price"],
@@ -159,11 +160,7 @@ const productSchema = z
     } else {
       // Para otros tipos (mate, etc.), verificar price y stock
       // preprocess ya convierte strings vacíos a undefined
-      if (
-        data.price === undefined ||
-        data.price === null ||
-        data.price <= 0
-      ) {
+      if (data.price === undefined || data.price === null || data.price <= 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["price"],
@@ -171,11 +168,7 @@ const productSchema = z
             "precio es requerido y debe ser positivo para este tipo de producto",
         });
       }
-      if (
-        data.stock === undefined ||
-        data.stock === null ||
-        data.stock < 0
-      ) {
+      if (data.stock === undefined || data.stock === null || data.stock < 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["stock"],
@@ -209,6 +202,8 @@ const Spinner = () => (
   </svg>
 );
 
+const categories = ["Yerbas", "Mates", "Bombillas", "Accesorios", "Yuyos"]; // ✅ Agregar esta línea que faltaba
+
 function ProductFormPage() {
   const [formData, setFormData] = useState(initialFormData);
   const [isLoadingInitialData, setIsLoadingInitialData] = useState(false);
@@ -216,19 +211,71 @@ function ProductFormPage() {
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
   const [currentImageUrl, setCurrentImageUrl] = useState("");
   const [formErrors, setFormErrors] = useState({});
-  const [generalError, setGeneralError] = useState("");
-  
+  const [validationTimeout, setValidationTimeout] = useState(null);
 
   const navigate = useNavigate();
   const { productId } = useParams();
   const isEditMode = Boolean(productId);
 
+  // ✅ Validación debounced para mejor UX
+  const debouncedValidation = useCallback(
+    (fieldName, value) => {
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
+      }
+
+      const timeout = setTimeout(() => {
+        // Solo validar el campo específico si no está vacío
+        if (value && value.trim()) {
+          try {
+            const fieldSchema = productSchema.pick({ [fieldName]: true });
+            fieldSchema.parse({ [fieldName]: value });
+
+            // Limpiar error si es válido
+            setFormErrors((prev) => {
+              const newErrors = { ...prev };
+              delete newErrors[fieldName];
+              return newErrors;
+            });
+          } catch (error) {
+            // Mostrar error específico
+            if (error.errors?.[0]) {
+              setFormErrors((prev) => ({
+                ...prev,
+                [fieldName]: error.errors[0].message,
+              }));
+            }
+          }
+        }
+      }, 500); // 500ms de debounce
+
+      setValidationTimeout(timeout);
+    },
+    [validationTimeout]
+  );
+
+  // ✅ Carga inicial optimizada con mejor manejo de errores
   useEffect(() => {
+    let isMounted = true;
+
     if (isEditMode && productId) {
       setIsLoadingInitialData(true);
+
+      // ✅ Mostrar toast de carga
+      const loadingToast = toast.info("Cargando datos del producto...", {
+        autoClose: false,
+        hideProgressBar: true,
+        closeButton: false,
+      });
+
       productService
         .getProductById(productId)
         .then((product) => {
+          if (!isMounted) return;
+
+          // ✅ Cerrar toast de carga
+          toast.dismiss(loadingToast);
+
           const productData = {
             name: product.name || "",
             description: product.description || "",
@@ -249,65 +296,160 @@ function ProductFormPage() {
             isActive: product.isActive !== undefined ? product.isActive : true,
             image: null,
           };
+
           setFormData(productData);
+
           if (product.imageUrl) {
             setCurrentImageUrl(product.imageUrl);
-            setImagePreviewUrl(null); // Asegurar que no haya preview si hay imagen actual
+            setImagePreviewUrl(null);
           }
+
+          // ✅ Toast de éxito más duradero
+          toast.success(`Producto "${product.name}" cargado correctamente`, {
+            autoClose: 3000,
+          });
         })
         .catch((err) => {
+          if (!isMounted) return;
+
+          // ✅ Cerrar toast de carga
+          toast.dismiss(loadingToast);
+
           const errorMessage =
             err.response?.data?.message ||
             err.message ||
             "Error al cargar el producto.";
-          toast.error(errorMessage);
-          navigate("/admin/products");
+
+          // ✅ Toast de error más duradero
+          toast.error(`Error: ${errorMessage}`, {
+            autoClose: 6000,
+          });
+
+          // ✅ Delay antes de navegar para que el usuario vea el error
+          setTimeout(() => {
+            navigate("/admin/products");
+          }, 2000);
         })
-        .finally(() => setIsLoadingInitialData(false));
+        .finally(() => {
+          if (isMounted) {
+            setIsLoadingInitialData(false);
+          }
+        });
     } else {
+      // ✅ Para modo creación, mostrar toast informativo
+      if (!isEditMode) {
+        toast.info("Formulario listo para crear nuevo producto", {
+          autoClose: 2000,
+        });
+      }
+
       setFormData(initialFormData);
       setImagePreviewUrl(null);
       setCurrentImageUrl("");
       setFormErrors({});
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [isEditMode, productId, navigate]);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  // ✅ Manejo de cambios optimizado con validación debounced
+  const handleChange = useCallback(
+    (e) => {
+      const { name, value, type, checked } = e.target;
 
-    let newFormData = {
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    };
+      let newFormData = {
+        ...formData,
+        [name]: type === "checkbox" ? checked : value,
+      };
 
-    // Si cambió la categoría, limpiar el tipo
-    if (name === "category") {
-      newFormData.type = "";
-    }
+      if (name === "category") {
+        newFormData.type = "";
+      }
 
-    setFormData(newFormData);
+      setFormData(newFormData);
 
-    if (formErrors[name]) {
-      setFormErrors((prevErrors) => ({ ...prevErrors, [name]: undefined }));
-    }
+      // ✅ Limpiar errores inmediatamente al cambiar
+      if (formErrors[name]) {
+        setFormErrors((prevErrors) => {
+          const newErrors = { ...prevErrors };
+          delete newErrors[name];
+          if (name === "category") delete newErrors.type;
+          return newErrors;
+        });
+      }
 
-    // Limpiar errores de tipo si cambió la categoría
-    if (name === "category" && formErrors.type) {
-      setFormErrors((prevErrors) => ({ ...prevErrors, type: undefined }));
-    }
-  };
+      // ✅ Validación debounced solo para campos importantes
+      if (["name", "category", "type"].includes(name)) {
+        debouncedValidation(name, type === "checkbox" ? checked : value);
+      }
+    },
+    [formData, formErrors, debouncedValidation]
+  );
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
+  // ✅ Manejo de archivo optimizado con mejores toasts
+  const handleFileChange = useCallback(
+    (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!validTypes.includes(file.type)) {
+        toast.error(
+          "Tipo de archivo no válido. Solo se permiten JPG, PNG y WebP.",
+          {
+            autoClose: 5000,
+          }
+        );
+        return;
+      }
+
+      if (file.size > maxSize) {
+        toast.error(
+          "El archivo es demasiado grande. El tamaño máximo es 5MB.",
+          {
+            autoClose: 5000,
+          }
+        );
+        return;
+      }
+
       setFormData((prev) => ({ ...prev, image: file }));
-      setImagePreviewUrl(URL.createObjectURL(file));
+
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+
+      const newPreviewUrl = URL.createObjectURL(file);
+      setImagePreviewUrl(newPreviewUrl);
       setCurrentImageUrl("");
+
       if (formErrors.image) {
         setFormErrors((prevErrors) => ({ ...prevErrors, image: undefined }));
       }
-    }
-  };
+
+      // ✅ Toast de éxito con duración adecuada
+      toast.success(`Imagen "${file.name}" seleccionada correctamente`, {
+        autoClose: 3000,
+      });
+    },
+    [imagePreviewUrl, formErrors]
+  );
+
+  // ✅ Cleanup optimizado
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
+      }
+    };
+  }, [imagePreviewUrl, validationTimeout]);
 
   const handlePackageSizeChange = (index, field, value) => {
     const updatedPackageSizes = formData.packageSizes.map((pkg, i) =>
@@ -349,158 +491,206 @@ function ProductFormPage() {
       (_, i) => i !== index
     );
     setFormData((prev) => ({ ...prev, packageSizes: updatedPackageSizes }));
-  };  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setFormErrors({});
-    setGeneralError("");
-    setIsSubmitting(true);
-
-    // Delay corto para asegurar que el botón de loading se renderiza antes de la validación
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    try {      // Validación sincrónica - mantener valores de string para que Zod aplique validaciones personalizadas
-      const dataToValidate = {
-        ...formData,
-        // Para números, mantener como string si está vacío para que Zod maneje la validación correctamente
-        price: formData.price,
-        stock: formData.stock,
-        stockInKg: formData.stockInKg,
-        packageSizes: formData.packageSizes,
-      };
-
-      const validationResult = productSchema.safeParse(dataToValidate);      
-
-      if (!validationResult.success) {
-        const errors = {};
-        validationResult.error.errors.forEach((error) => {
-          const path = error.path.join(".");
-          errors[path] = error.message;
-        });
-        setFormErrors(errors);
-        setGeneralError(""); // Limpiar error general para mostrar errores específicos
-        
-        // Solo mostrar toast para errores de validación
-        if (toast) {
-          toast.error('Por favor, corrige los errores en el formulario.');
-        }
-        
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Usar datos validados
-      const sourceData = validationResult.data;
-      const dataToSubmit = new FormData();
-
-      Object.keys(sourceData).forEach((key) => {
-        if (
-          key === "packageSizes" &&
-          (sourceData.type === "yerba" || sourceData.type === "yuyo")
-        ) {
-          if (
-            sourceData.packageSizes &&
-            sourceData.packageSizes.length > 0
-          ) {
-            const validPackages = sourceData.packageSizes.filter(
-              (pkg) =>
-                pkg.sizeInKg &&
-                pkg.sizeInKg !== "" &&
-                pkg.price &&
-                pkg.price !== ""
-            );
-            validPackages.forEach((pkg, index) => {
-              dataToSubmit.append(
-                `packageSizes[${index}][sizeInKg]`,
-                String(pkg.sizeInKg)
-              );
-              dataToSubmit.append(
-                `packageSizes[${index}][price]`,
-                String(pkg.price)
-              );
-            });
-          }
-        } else if (key === "image" && sourceData.image instanceof File) {
-          dataToSubmit.append("image", sourceData.image);
-        } else if (
-          key !== "packageSizes" &&
-          key !== "image" &&
-          sourceData[key] !== null &&
-          sourceData[key] !== undefined
-        ) {
-          dataToSubmit.append(key, String(sourceData[key]));
-        }
-      });
-
-      if (sourceData.type === "yerba" || sourceData.type === "yuyo") {
-        if (dataToSubmit.has("price")) dataToSubmit.delete("price");
-        if (dataToSubmit.has("stock")) dataToSubmit.delete("stock");
-      } else {
-        if (dataToSubmit.has("stockInKg")) dataToSubmit.delete("stockInKg");
-      }
-
-      if (isEditMode) {
-        await productService.updateProduct(productId, dataToSubmit);
-        toast.success("¡Producto actualizado exitosamente!");
-      } else {
-        await productService.createProduct(dataToSubmit);
-        toast.success("¡Producto creado exitosamente!");
-      }
-      // Navigate back to product list
-      navigate("/admin/products");    } catch (error) {
-      // Mostrar mensaje de error específico para los tests
-      console.error('Error:', error);
-      const operationType = isEditMode ? "Update" : "Create";
-      const errorMessage = `Network Error ${operationType}`;
-      
-      // Limpiar errores de validación y mostrar error de API
-      setFormErrors({});
-      setGeneralError(errorMessage);
-      
-      // Solo mostrar toast para errores de API 
-      if (toast) {
-        toast.error(errorMessage);
-      }
-    } finally {
-      // Re-enable submit button after completion (success or error)
-      setIsSubmitting(false);
-    }
   };
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setFormErrors({});
+      setIsSubmitting(true);
 
+      // ✅ Toast de loading persistente
+      const loadingToast = toast.info(
+        isEditMode ? "Actualizando producto..." : "Creando producto...",
+        {
+          autoClose: false,
+          hideProgressBar: true,
+          closeButton: false,
+        }
+      );
+
+      try {
+        // ✅ Delay mínimo para mostrar el loading
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        const dataToValidate = {
+          ...formData,
+          price: formData.price,
+          stock: formData.stock,
+          stockInKg: formData.stockInKg,
+          packageSizes: formData.packageSizes,
+        };
+
+        const validationResult = productSchema.safeParse(dataToValidate);
+
+        if (!validationResult.success) {
+          // ✅ Cerrar loading
+          toast.dismiss(loadingToast);
+
+          const errors = {};
+          validationResult.error.errors.forEach((error) => {
+            const path = error.path.join(".");
+            errors[path] = error.message;
+          });
+          setFormErrors(errors);
+
+          toast.error(
+            "Por favor, corrige los errores en el formulario antes de continuar.",
+            {
+              autoClose: 6000,
+            }
+          );
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Preparar datos
+        const sourceData = validationResult.data;
+        const dataToSubmit = new FormData();
+
+        Object.keys(sourceData).forEach((key) => {
+          if (
+            key === "packageSizes" &&
+            (sourceData.type === "yerba" || sourceData.type === "yuyo")
+          ) {
+            if (sourceData.packageSizes && sourceData.packageSizes.length > 0) {
+              const validPackages = sourceData.packageSizes.filter(
+                (pkg) =>
+                  pkg.sizeInKg &&
+                  pkg.sizeInKg !== "" &&
+                  pkg.price &&
+                  pkg.price !== ""
+              );
+              validPackages.forEach((pkg, index) => {
+                dataToSubmit.append(
+                  `packageSizes[${index}][sizeInKg]`,
+                  String(pkg.sizeInKg)
+                );
+                dataToSubmit.append(
+                  `packageSizes[${index}][price]`,
+                  String(pkg.price)
+                );
+              });
+            }
+          } else if (key === "image" && sourceData.image instanceof File) {
+            dataToSubmit.append("image", sourceData.image);
+          } else if (
+            key !== "packageSizes" &&
+            key !== "image" &&
+            sourceData[key] !== null &&
+            sourceData[key] !== undefined
+          ) {
+            dataToSubmit.append(key, String(sourceData[key]));
+          }
+        });
+
+        // Limpiar campos irrelevantes
+        if (sourceData.type === "yerba" || sourceData.type === "yuyo") {
+          if (dataToSubmit.has("price")) dataToSubmit.delete("price");
+          if (dataToSubmit.has("stock")) dataToSubmit.delete("stock");
+        } else {
+          if (dataToSubmit.has("stockInKg")) dataToSubmit.delete("stockInKg");
+        }
+
+        // ✅ Operación con feedback optimizado
+        let result;
+        if (isEditMode) {
+          result = await productService.updateProduct(productId, dataToSubmit);
+
+          // ✅ Cerrar loading y mostrar éxito
+          toast.dismiss(loadingToast);
+          toast.success(
+            `¡Producto "${
+              result.name || formData.name
+            }" actualizado exitosamente!`,
+            {
+              autoClose: 4000,
+            }
+          );
+        } else {
+          result = await productService.createProduct(dataToSubmit);
+
+          // ✅ Cerrar loading y mostrar éxito
+          toast.dismiss(loadingToast);
+          toast.success(
+            `¡Producto "${result.name || formData.name}" creado exitosamente!`,
+            {
+              autoClose: 4000,
+            }
+          );
+        }
+
+        // ✅ Delay antes de navegar para mostrar el toast
+        setTimeout(() => {
+          navigate("/admin/products", {
+            state: {
+              [isEditMode ? "updated" : "created"]: true,
+              productName: result.name || formData.name,
+            },
+          });
+        }, 1500);
+      } catch (error) {
+        console.error("Error:", error);
+
+        // ✅ Cerrar loading
+        toast.dismiss(loadingToast);
+
+        const errorMessage =
+          error.message ||
+          `Error al ${isEditMode ? "actualizar" : "crear"} producto`;
+
+        toast.error(`Error: ${errorMessage}`, {
+          autoClose: 6000,
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [formData, isEditMode, productId, navigate]
+  );
+
+  // ✅ Datos memoizados para rendimiento
+  const availableTypes = useMemo(() => {
+    const productTypes = {
+      Yerbas: ["yerba"],
+      Mates: [
+        "mate calabaza",
+        "mate torpedo",
+        "mate camionero",
+        "mate acero",
+        "mate vidrio",
+      ],
+      Bombillas: ["bombilla acero", "bombilla alpaca", "bombilla pico de loro"],
+      Accesorios: ["termo", "matero", "limpia bombilla", "cepillo mate"],
+      Yuyos: ["yuyo medicinal", "yuyo aromático"],
+    };
+    return formData.category ? productTypes[formData.category] || [] : [];
+  }, [formData.category]);
+
+  // ✅ Loading optimizado con mejor UX
   if (isLoadingInitialData && isEditMode) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-center text-gray-600 text-xl">
-          Cargando datos del producto...
-        </p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <LoadingSpinner size="large" />
+          <h2 className="mt-4 text-lg font-semibold text-gray-900">
+            Cargando datos del producto
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Por favor espera mientras obtenemos la información...
+          </p>
+        </div>
       </div>
     );
   }
 
-  const categories = ["Yerbas", "Mates", "Bombillas", "Accesorios", "Yuyos"];
-  const productTypes = {
-    Yerbas: ["yerba"],
-    Mates: [
-      "mate calabaza",
-      "mate torpedo",
-      "mate camionero",
-      "mate acero",
-      "mate vidrio",
-    ],
-    Bombillas: ["bombilla acero", "bombilla alpaca", "bombilla pico de loro"],
-    Accesorios: ["termo", "matero", "limpia bombilla", "cepillo mate"],
-    Yuyos: ["yuyo medicinal", "yuyo aromático"],
-  };
-  const availableTypes = formData.category
-    ? productTypes[formData.category] || []
-    : [];
   const inputBaseClasses =
-    "w-full px-4 py-2 border rounded-md shadow-sm focus:ring-(--secondary-color) focus:border-(--secondary-color) disabled:bg-gray-100 disabled:cursor-not-allowed";
+    "w-full px-4 py-2 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed";
   const labelBaseClasses = "block text-sm font-medium text-gray-700 mb-1";
   const errorTextClasses = "mt-1 text-xs text-red-600";
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-3xl">
-      <h1 className="text-3xl font-semibold text-(--text-color) mb-8">
+      <h1 className="text-3xl font-semibold text-gray-900 mb-8">
         {isEditMode ? "Editar Producto" : "Añadir Nuevo Producto"}
       </h1>
 
@@ -509,9 +699,14 @@ function ProductFormPage() {
         className="bg-white p-6 md:p-8 rounded-lg shadow-xl space-y-6"
         noValidate
       >
-        {generalError && (
-          <div className="mb-4 text-red-600 text-sm" data-testid="general-error">
-            {generalError}
+        {Object.keys(formErrors).length > 0 && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+            <strong>Corrija los siguientes errores:</strong>
+            <ul className="list-disc list-inside">
+              {Object.values(formErrors).map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
           </div>
         )}
         <div>
@@ -530,7 +725,9 @@ function ProductFormPage() {
             }`}
           />
           {formErrors.name && (
-            <p className={errorTextClasses} role="alert">{formErrors.name}</p>
+            <p className={errorTextClasses} role="alert">
+              {formErrors.name}
+            </p>
           )}
         </div>
 
@@ -550,7 +747,9 @@ function ProductFormPage() {
             }`}
           />
           {formErrors.description && (
-            <p className={errorTextClasses} role="alert">{formErrors.description}</p>
+            <p className={errorTextClasses} role="alert">
+              {formErrors.description}
+            </p>
           )}
         </div>
 
@@ -577,7 +776,9 @@ function ProductFormPage() {
               ))}
             </select>
             {formErrors.category && (
-              <p className={errorTextClasses} role="alert">{formErrors.category}</p>
+              <p className={errorTextClasses} role="alert">
+                {formErrors.category}
+              </p>
             )}
           </div>
 
@@ -607,7 +808,9 @@ function ProductFormPage() {
               ))}
             </select>
             {formErrors.type && (
-              <p className={errorTextClasses} role="alert">{formErrors.type}</p>
+              <p className={errorTextClasses} role="alert">
+                {formErrors.type}
+              </p>
             )}
           </div>
         </div>
@@ -632,7 +835,9 @@ function ProductFormPage() {
                 }`}
               />
               {formErrors.stockInKg && (
-                <p className={errorTextClasses} role="alert">{formErrors.stockInKg}</p>
+                <p className={errorTextClasses} role="alert">
+                  {formErrors.stockInKg}
+                </p>
               )}
             </div>
             <div className="space-y-4 border border-gray-200 p-4 rounded-md">
@@ -642,7 +847,9 @@ function ProductFormPage() {
 
               {formErrors.packageSizes &&
                 typeof formErrors.packageSizes === "string" && (
-                  <p className={errorTextClasses} role="alert">{formErrors.packageSizes}</p>
+                  <p className={errorTextClasses} role="alert">
+                    {formErrors.packageSizes}
+                  </p>
                 )}
               {formData.packageSizes.map((pkg, index) => (
                 <div
@@ -672,8 +879,7 @@ function ProductFormPage() {
                       min="0.01"
                       disabled={isSubmitting}
                       className={`${inputBaseClasses} text-sm ${
-                        formErrors[`packageSizes.${index}.sizeInKg`
-                        ]
+                        formErrors[`packageSizes.${index}.sizeInKg`]
                           ? "border-red-500"
                           : "border-gray-300"
                       }`}
@@ -732,7 +938,7 @@ function ProductFormPage() {
                 type="button"
                 onClick={addPackageSize}
                 disabled={isSubmitting}
-                className="mt-2 flex items-center text-sm text-(--secondary-color) hover:text-(--primary-color) font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-2 flex items-center text-sm text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <PlusCircleIcon className="h-5 w-5 mr-1" /> Añadir Presentación
               </button>
@@ -758,7 +964,9 @@ function ProductFormPage() {
                 }`}
               />
               {formErrors.price && (
-                <p className={errorTextClasses} role="alert">{formErrors.price}</p>
+                <p className={errorTextClasses} role="alert">
+                  {formErrors.price}
+                </p>
               )}
             </div>
             <div>
@@ -779,7 +987,9 @@ function ProductFormPage() {
                 }`}
               />
               {formErrors.stock && (
-                <p className={errorTextClasses} role="alert">{formErrors.stock}</p>
+                <p className={errorTextClasses} role="alert">
+                  {formErrors.stock}
+                </p>
               )}
             </div>
           </div>
@@ -812,17 +1022,25 @@ function ProductFormPage() {
               )}
             </span>
             <span
-              className={`cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--secondary-color) transition-colors duration-150 ${
+              className={`cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-150 ${
                 isSubmitting ? "opacity-50 cursor-not-allowed" : ""
               }`}
               role="button"
               tabIndex={0}
-              aria-label={imagePreviewUrl || currentImageUrl ? "Cambiar imagen" : "Subir imagen"}
-              onKeyPress={(e) => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('image').click(); }}
-              onClick={() => document.getElementById('image').click()}
+              aria-label={
+                imagePreviewUrl || currentImageUrl
+                  ? "Cambiar imagen"
+                  : "Subir imagen"
+              }
+              onKeyPress={(e) => {
+                if (e.key === "Enter" || e.key === " ")
+                  document.getElementById("image").click();
+              }}
+              onClick={() => document.getElementById("image").click()}
             >
               <span>
-                {imagePreviewUrl || currentImageUrl ? "Cambiar" : "Subir"} imagen
+                {imagePreviewUrl || currentImageUrl ? "Cambiar" : "Subir"}{" "}
+                imagen
               </span>
               <input
                 id="image"
@@ -832,12 +1050,18 @@ function ProductFormPage() {
                 onChange={handleFileChange}
                 accept="image/*"
                 disabled={isSubmitting}
-                aria-label={imagePreviewUrl || currentImageUrl ? "Cambiar imagen" : "Subir imagen"}
+                aria-label={
+                  imagePreviewUrl || currentImageUrl
+                    ? "Cambiar imagen"
+                    : "Subir imagen"
+                }
               />
             </span>
           </div>
           {formErrors.image && (
-            <p className={errorTextClasses} role="alert">{formErrors.image}</p>
+            <p className={errorTextClasses} role="alert">
+              {formErrors.image}
+            </p>
           )}
         </div>
 
@@ -849,7 +1073,7 @@ function ProductFormPage() {
             checked={formData.isActive}
             onChange={handleChange}
             disabled={isSubmitting}
-            className="h-4 w-4 text-(--secondary-color) border-gray-300 rounded focus:ring-(--secondary-color) disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <label
             htmlFor="isActive"
@@ -864,22 +1088,28 @@ function ProductFormPage() {
             type="button"
             onClick={() => navigate("/admin/products")}
             disabled={isSubmitting}
-            className="w-full sm:w-auto mb-3 sm:mb-0 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--secondary-color) disabled:opacity-50 disabled:cursor-not-allowed"          >
+            className="w-full sm:w-auto mb-3 sm:mb-0 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+          >
             Cancelar
           </button>
+
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full sm:w-auto flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-                              ${
-                                isSubmitting
-                                  ? "bg-gray-400 cursor-not-allowed"
-                                  : "bg-(--secondary-color) hover:bg-(--primary-color) focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-(--secondary-color)"
-                              }`}
-          >            {isSubmitting ? (
+            className={`w-full sm:w-auto flex justify-center items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-all duration-200 ${
+              isSubmitting
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            }`}
+          >
+            {isSubmitting ? (
               <>
-                <Spinner aria-hidden="true" />
-                <span data-testid="submit-loading-text">{isEditMode ? "actualizando..." : "creando..."}</span>
+                <LoadingSpinner
+                  size="small"
+                  showDots={false}
+                  className="mr-2"
+                />
+                <span>{isEditMode ? "Actualizando..." : "Creando..."}</span>
               </>
             ) : isEditMode ? (
               "Actualizar Producto"
@@ -891,6 +1121,6 @@ function ProductFormPage() {
       </form>
     </div>
   );
-}   
+}
 
 export default ProductFormPage;

@@ -10,6 +10,7 @@ import {
 } from '../controllers/saleController.js';
 import { protectAdmin } from '../middleware/authMiddleware.js';
 
+
 // Ruta para crear una venta:
 // - Si es desde la tienda pública, no necesita autenticación de admin.
 // - Si es desde el dashboard (venta presencial), SÍ necesita autenticación de admin.
@@ -19,13 +20,13 @@ import { protectAdmin } from '../middleware/authMiddleware.js';
 // y el dashboard del admin usa esta ruta CON token de admin.
 // Para simplificar y cumplir tu requisito de que el admin cree ventas:
 // Rutas existentes mejoradas
-router.post('/', authMiddleware, createSale);
-router.get('/', authMiddleware, getAllSales);
-router.get('/product/:productId', authMiddleware, getSalesByProduct);
+router.post('/', protectAdmin, createSale);
+router.get('/', protectAdmin, getAllSales);
+router.get('/product/:productId', protectAdmin, getSalesByProduct);
 
 // ✨ NUEVAS RUTAS
-router.get('/order/:orderNumber', authMiddleware, getSaleByOrderNumber);
-router.put('/:saleId/status', authMiddleware, updateOrderStatus);
-router.get('/customer/:customerEmail', authMiddleware, getSalesByCustomer);
+router.get('/order/:orderNumber', protectAdmin, getSaleByOrderNumber);
+router.put('/:saleId/status', protectAdmin, updateOrderStatus);
+router.get('/customer/:customerEmail', protectAdmin, getSalesByCustomer);
 
 export default router;

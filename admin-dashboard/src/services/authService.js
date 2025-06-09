@@ -1,37 +1,90 @@
-import axios from 'axios';
+// Servicio de autenticación con datos mock para desarrollo
+const authService = {
+  login: async (email, password) => {
+    // Simular delay de red
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-const API_BASE_URL = 'http://localhost:3000/api/auth/admin'; // URL base de tu API
-const login = async (email, password) => {
-  try {
-    const response = await axios.post(`${API_BASE_URL}/login`, { email, password });
-    if (response.data.token) {
-      localStorage.setItem('adminToken', response.data.token);
-      // Opcional: guardar info del usuario si la API la devuelve
-      // localStorage.setItem('adminUser', JSON.stringify(response.data.user));
+    // Credenciales de demostración
+    const validCredentials = {
+      'tu@email.com': '********',
+      'admin@yerbaxanaes.com': 'admin123',
+      'demo@yerbaxanaes.com': 'demo123'
+    };
+
+    if (validCredentials[email] && validCredentials[email] === password) {
+      const mockUser = {
+        id: '1',
+        email: email,
+        name: 'Administrador YerbaXanaes',
+        role: 'admin',
+        avatar: '/images/logoYerbaXanaes.png'
+      };
+
+      const mockToken = btoa(JSON.stringify({ 
+        userId: mockUser.id, 
+        email: mockUser.email,
+        exp: Date.now() + (24 * 60 * 60 * 1000) // 24 horas
+      }));
+
+      return {
+        user: mockUser,
+        token: mockToken
+      };
+    } else {
+      throw new Error('Credenciales inválidas. Intenta con tu@email.com y ********');
     }
-    return response.data;
-  } catch (error) {
-    // Lanza el mensaje de error del backend si está disponible, o un mensaje genérico
-    const errorMessage = error.response?.data?.message || error.message || 'Error de inicio de sesión. Verifique sus credenciales.';
-    throw new Error(errorMessage);
+  },
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  },
+
+  validateToken: async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No token found');
+    }
+
+    try {
+      const payload = JSON.parse(atob(token));
+      
+      // Verificar si el token ha expirado
+      if (payload.exp < Date.now()) {
+        throw new Error('Token expired');
+      }
+
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      return {
+        id: payload.userId,
+        email: payload.email,
+        name: 'Administrador YerbaXanaes',
+        role: 'admin',
+        avatar: '/images/logoYerbaXanaes.png'
+      };
+    } catch (error) {
+      throw new Error('Invalid token');
+    }
+  },
+
+  getCurrentUser: () => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token));
+      return {
+        id: payload.userId,
+        email: payload.email,
+        name: 'Administrador YerbaXanaes',
+        role: 'admin'
+      };
+    } catch {
+      return null;
+    }
   }
 };
 
-const logout = () => {
-  localStorage.removeItem('adminToken');
-  // localStorage.removeItem('adminUser');
-  // Considera redirigir aquí o dejar que el componente que llama a logout lo haga.
-  // window.location.href = '/login'; // Esto fuerza un refresh, useNavigate es más SPA-friendly
-};
-
-const getCurrentUserToken = () => {
-  return localStorage.getItem('adminToken');
-};
-
-// Podrías añadir una función para verificar la validez del token con el backend si es necesario
-// const verifyToken = async (token) => { ... }
-export default {
-  login,
-  logout,
-  getCurrentUserToken,
-};
+export default authService;

@@ -102,67 +102,25 @@ const CustomerListPage = () => {
   const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
-      // TODO: Reemplazar con llamada real a la API
-      // const response = await customerService.getAllCustomers({
-      //   page: currentPage,
-      //   search: searchTerm,
-      //   segment: selectedSegment,
-      //   sortBy,
-      //   sortOrder
-      // });
-      
-      // Simular API call
+      // Simular carga de datos
       setTimeout(() => {
-        let filteredCustomers = [...mockCustomers];
-        
-        // Filtro por búsqueda
-        if (searchTerm) {
-          filteredCustomers = filteredCustomers.filter(customer =>
+        const filtered = mockCustomers.filter(customer => {
+          const matchesSearch = searchTerm === '' || 
             customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            customer.email.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-        }
-        
-        // Filtro por segmento
-        if (selectedSegment) {
-          filteredCustomers = filteredCustomers.filter(customer =>
-            customer.marketing.customerSegment === selectedSegment
-          );
-        }
-        
-        // ✅ IMPLEMENTAR ORDENAMIENTO FUNCIONAL
-        filteredCustomers.sort((a, b) => {
-          let aValue, bValue;
+            customer.email.toLowerCase().includes(searchTerm.toLowerCase());
           
-          switch (sortBy) {
-            case 'name':
-              aValue = a.name.toLowerCase();
-              bValue = b.name.toLowerCase();
-              break;
-            case 'stats.totalSpent':
-              aValue = a.stats.totalSpent;
-              bValue = b.stats.totalSpent;
-              break;
-            case 'createdAt':
-            default:
-              aValue = new Date(a.createdAt);
-              bValue = new Date(b.createdAt);
-              break;
-          }
+          const matchesSegment = selectedSegment === 'all' || 
+            customer.marketing.customerSegment === selectedSegment;
           
-          if (sortOrder === 'asc') {
-            return aValue > bValue ? 1 : -1;
-          } else {
-            return aValue < bValue ? 1 : -1;
-          }
+          return matchesSearch && matchesSegment;
         });
-        
-        setCustomers(filteredCustomers);
+
+        setCustomers(filtered);
         setTotalPages(1);
         
         // ✅ ESTADÍSTICAS DINÁMICAS CALCULADAS CORRECTAMENTE
         setStats({
-          total: filteredCustomers.length,
+          total: filtered.length,
           segments: [
             { _id: 'new', count: mockCustomers.filter(c => c.marketing.customerSegment === 'new').length },
             { _id: 'regular', count: mockCustomers.filter(c => c.marketing.customerSegment === 'regular').length },
@@ -178,7 +136,7 @@ const CustomerListPage = () => {
       toast.error('Error al cargar los clientes');
       setLoading(false);
     }
-  }, [currentPage, searchTerm, selectedSegment, sortBy, sortOrder]);
+  }, [searchTerm, selectedSegment]); // Dependencias corregidas
 
   // ✅ useEffect CORRECTO SIN WARNINGS
   useEffect(() => {

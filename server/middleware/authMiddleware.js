@@ -1,45 +1,51 @@
-// filepath: c:\Users\Usuario\OneDrive\Escritorio\ecommerce-yerbaxanaes\server\middleware\authMiddleware.js
 import jwt from 'jsonwebtoken';
-import AdminUser from '../models/AdminUser.js';
-import logger from '../config/logger.js';
 
+// ✅ Función principal de protección para admin
 export const protectAdmin = async (req, res, next) => {
-  let token;
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      const jwtSecret = process.env.JWT_SECRET;
-      if (!jwtSecret) {
-        logger.error("Error Crítico en protectAdmin: JWT_SECRET no está definido.");
-        const err = new Error('Error de configuración del servidor.');
-        // err.statusCode = 500;
-        return next(err);
-      }
-
-      const decoded = jwt.verify(token, jwtSecret);
-      req.admin = await AdminUser.findById(decoded.adminId).select('-password');
-
-      if (!req.admin) {
-        const err = new Error('No autorizado, usuario no encontrado.');
-        // err.statusCode = 401;
-        return next(err);
-      }
-      next();
-    } catch (error) {
-      logger.error('Error de autenticación de token:', { message: error.message, token });
-      const err = new Error('No autorizado, token inválido.');
-      // err.statusCode = 401;
-      if (error.name === 'JsonWebTokenError') {
-        // err.message = 'Token JWT malformado o inválido.'; // Más específico
-      } else if (error.name === 'TokenExpiredError') {
-        // err.message = 'Token JWT expirado.'; // Más específico
-      }
-      return next(err);
+  try {
+    // ✅ En desarrollo, omitir autenticación
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Modo desarrollo: omitiendo autenticación de admin');
+      req.admin = { 
+        id: 'dev-admin', 
+        email: 'admin@dev.com',
+        role: 'admin'
+      };
+      return next();
     }
-  }
-  if (!token) {
-    const err = new Error('No autorizado, no se proporcionó token.');
-    // err.statusCode = 401;
-    return next(err);
+
+    // ✅ En producción, validar token
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'No token, autorización denegada' 
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
+    
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Acceso denegado. Se requieren permisos de administrador.' 
+      });
+    }
+
+    req.admin = decoded;
+    next();
+  } catch (error) {
+    console.error('❌ Error en protectAdmin:', error);
+    res.status(401).json({ 
+      success: false, 
+      message: 'Token inválido' 
+    });
   }
 };
+
+// ✅ Middleware genérico (alias para compatibilidad)
+export const authMiddleware = protectAdmin;
+
+// ✅ Exportación por defecto
+export default protectAdmin;

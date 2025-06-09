@@ -13,6 +13,7 @@ import logger from './config/logger.js';
 import saleRoutes from './routes/saleRoutes.js';
 import productGeneralRoutes from './routes/productGeneralRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
 
 // Cargar las variables de entorno desde el archivo .env
 dotenv.config();

@@ -1,6 +1,6 @@
 import apiClient from './api';
 
-const API_ROUTE = '/sales'; // Reutilizamos el endpoint de sales existente
+const API_ROUTE = '/orders';
 
 export const getAllOrders = async (params = {}) => {
   try {
@@ -14,7 +14,7 @@ export const getAllOrders = async (params = {}) => {
 
 export const getOrderById = async (orderId) => {
   try {
-    const response = await apiClient.get(`${API_ROUTE}/order/${orderId}`);
+    const response = await apiClient.get(`${API_ROUTE}/${orderId}`);
     return response.data;
   } catch (error) {
     console.error('Error al obtener pedido:', error.response?.data || error.message);
@@ -24,7 +24,7 @@ export const getOrderById = async (orderId) => {
 
 export const updateOrderStatus = async (orderId, updates) => {
   try {
-    const response = await apiClient.put(`${API_ROUTE}/${orderId}/status`, updates);
+    const response = await apiClient.patch(`${API_ROUTE}/${orderId}`, updates);
     return response.data;
   } catch (error) {
     console.error('Error al actualizar pedido:', error.response?.data || error.message);
