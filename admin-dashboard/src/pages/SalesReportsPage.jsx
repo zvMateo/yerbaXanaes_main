@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -20,82 +20,41 @@ import {
   PieChart,
   Activity
 } from 'lucide-react';
+import { toast } from 'react-toastify';
+import * as salesService from '../services/salesService';
 
 const SalesReportsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState('30d');
   const [salesData, setSalesData] = useState(null);
-  const [selectedMetric, setSelectedMetric] = useState('revenue');
+  
   const [showFilters, setShowFilters] = useState(false);
 
-  // Simular carga de datos
-  useEffect(() => {
-    const loadSalesData = () => {
-      setTimeout(() => {
-        setSalesData(getMockSalesData());
-        setIsLoading(false);
-      }, 1000);
-    };
-
-    loadSalesData();
+  const loadSalesData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await salesService.getSalesData(dateRange);
+      setSalesData(data);
+    } catch (error) {
+      console.error('Error al cargar datos de ventas:', error);
+      toast.error('Error al cargar datos de ventas. Intenta de nuevo más tarde.');
+      setSalesData(null); // Asegurarse de que salesData sea null en caso de error
+    } finally {
+      setIsLoading(false);
+    }
   }, [dateRange]);
 
-  const getMockSalesData = () => ({
-    overview: {
-      totalRevenue: 485750,
-      totalOrders: 342,
-      averageOrderValue: 1420,
-      totalCustomers: 156,
-      conversionRate: 3.2,
-      growthRate: 12.5
-    },
-    trends: {
-      revenue: [
-        { date: '2025-01-01', value: 15420 },
-        { date: '2025-01-02', value: 18750 },
-        { date: '2025-01-03', value: 12340 },
-        { date: '2025-01-04', value: 22150 },
-        { date: '2025-01-05', value: 19800 },
-        { date: '2025-01-06', value: 25600 },
-        { date: '2025-01-07', value: 21900 }
-      ],
-      orders: [
-        { date: '2025-01-01', value: 12 },
-        { date: '2025-01-02', value: 18 },
-        { date: '2025-01-03', value: 8 },
-        { date: '2025-01-04', value: 24 },
-        { date: '2025-01-05', value: 16 },
-        { date: '2025-01-06', value: 28 },
-        { date: '2025-01-07', value: 22 }
-      ]
-    },
-    topProducts: [
-      { name: 'Yerba Amanda 1kg', sales: 85, revenue: 127500, growth: 15.2 },
-      { name: 'Mate Calabaza Premium', sales: 42, revenue: 105000, growth: 8.7 },
-      { name: 'Yerba Taragüi 500g', sales: 67, revenue: 83750, growth: -2.1 },
-      { name: 'Bombilla Alpaca', sales: 23, revenue: 34500, growth: 22.5 },
-      { name: 'Termo Stanley', sales: 15, revenue: 67500, growth: 45.3 }
-    ],
-    salesByCategory: [
-      { category: 'Yerbas', sales: 152, revenue: 211250, percentage: 43.5 },
-      { category: 'Mates', sales: 65, revenue: 139500, percentage: 28.7 },
-      { category: 'Accesorios', sales: 89, revenue: 102000, percentage: 21.0 },
-      { category: 'Bombillas', sales: 36, revenue: 33000, percentage: 6.8 }
-    ],
-    salesByRegion: [
-      { region: 'Buenos Aires', sales: 148, revenue: 210340, percentage: 43.3 },
-      { region: 'Córdoba', sales: 76, revenue: 108950, percentage: 22.4 },
-      { region: 'Santa Fe', sales: 54, revenue: 77840, percentage: 16.0 },
-      { region: 'Mendoza', sales: 38, revenue: 54620, percentage: 11.2 },
-      { region: 'Otras', sales: 26, revenue: 34000, percentage: 7.1 }
-    ],
-    paymentMethods: [
-      { method: 'Transferencia', count: 156, percentage: 45.6 },
-      { method: 'Efectivo', count: 98, percentage: 28.7 },
-      { method: 'Tarjeta Débito', count: 54, percentage: 15.8 },
-      { method: 'Tarjeta Crédito', count: 34, percentage: 9.9 }
-    ]
-  });
+  useEffect(() => {
+    loadSalesData();
+  }, [loadSalesData]);
+
+  const handleRefresh = useCallback(() => {
+    loadSalesData();
+  }, [loadSalesData]);
+
+
+
+
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('es-AR', {
@@ -115,7 +74,7 @@ const SalesReportsPage = () => {
     { value: '1y', label: 'Último año' }
   ];
 
-  const KPICard = ({ title, value, change, icon: Icon, trend, format = 'currency' }) => {
+  const KPICard = ({ title, value, change, format = 'currency' }) => {
     const isPositive = change >= 0;
     const formattedValue = format === 'currency' ? formatCurrency(value) : 
                           format === 'percentage' ? `${value}%` : 
@@ -184,6 +143,24 @@ const SalesReportsPage = () => {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!salesData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center p-8 bg-white rounded-xl shadow-sm border border-gray-200">
+          <p className="text-lg text-red-600 font-semibold mb-4">Error al cargar los datos de ventas.</p>
+          <p className="text-gray-600">Por favor, intenta recargar la página o verifica tu conexión.</p>
+          <button
+            onClick={handleRefresh}
+            className="mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw className="inline-block w-4 h-4 mr-2" />
+            Reintentar
+          </button>
         </div>
       </div>
     );

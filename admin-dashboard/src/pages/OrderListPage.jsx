@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link,  } from 'react-router-dom';
 import { 
   Clock, 
   CheckCircle, 
@@ -21,11 +21,10 @@ import {
   Plus
 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { mockOrders, orderStatuses, deliveryMethods } from '../data/mockData';
+import { orderStatuses, deliveryMethods } from '../data/mockData';
+import * as orderService from '../services/orderService';
 
 const OrderListPage = () => {
-  const navigate = useNavigate();
-  
   // Estados principales
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
@@ -46,20 +45,24 @@ const OrderListPage = () => {
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
 
-  // Cargar datos simulados
-  useEffect(() => {
-    const loadOrders = () => {
-      setLoading(true);
-      
-      // Simular carga de datos
-      setTimeout(() => {
-        setOrders(mockOrders);
-        setLoading(false);
-      }, 1000);
-    };
-
-    loadOrders();
+  // Cargar datos de pedidos desde el servicio
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await orderService.getAllOrders();
+      setOrders(data);
+    } catch (error) {
+      console.error('Error al cargar pedidos:', error);
+      toast.error('Error al cargar pedidos. Intenta de nuevo más tarde.');
+      setOrders([]); // Asegurarse de que orders sea un array vacío en caso de error
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
   // Función optimizada de filtrado y búsqueda
   const applyFiltersAndSearch = useCallback(() => {
