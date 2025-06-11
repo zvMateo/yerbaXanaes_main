@@ -98,13 +98,6 @@ const ProductDetailModal = ({
   onToggleStatus,
   onDuplicate,
 }) => {
-  // ✅ VALIDACIÓN TEMPRANA MEJORADA
-  if (!isOpen || !product) return null;
-  
-  if (!onClose || !onEdit) {
-    console.warn('ProductDetailModal: onClose y onEdit son requeridos');
-    return null;
-  }
 
   const modalRef = useRef(null);
   const previousActiveElement = useRef(null);
@@ -118,7 +111,7 @@ const ProductDetailModal = ({
     duplicating: false,
     sharing: false,
   });
-
+  
   // ✅ FUNCIONES DE UTILIDAD MEJORADAS
   const formatCurrency = useCallback((amount) => {
     if (!amount || Number.isNaN(amount)) return "N/A";
@@ -140,7 +133,8 @@ const ProductDetailModal = ({
         hour: "2-digit",
         minute: "2-digit",
       });
-    } catch (error) {
+    } catch (err) {
+      console.error("Error al formatear la fecha:", err);
       return "Fecha inválida";
     }
   }, []);
@@ -158,7 +152,8 @@ const ProductDetailModal = ({
       if (diffDays < 7) return `Hace ${diffDays} días`;
       if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} semanas`;
       return `Hace ${Math.floor(diffDays / 30)} meses`;
-    } catch (error) {
+    } catch (err) {
+      console.error("Error al calcular el tiempo relativo:", err);
       return "N/A";
     }
   }, []);
@@ -241,13 +236,15 @@ const ProductDetailModal = ({
       window.gtag('event', 'product_modal_tab_change', {
         event_category: 'Product Management',
         event_label: tabId,
-        product_id: product._id
+        product_id: product?._id
       });
     }
-  }, [product._id]);
+  }, [product?._id]);
 
   // ✅ ACCIONES CON LOADING STATES ESPECÍFICOS
   const handleEditProduct = useCallback(() => {
+    if (!product || !onEdit) return;
+
     // Analytics
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'product_edit_start', {
@@ -312,6 +309,8 @@ const ProductDetailModal = ({
   }, [onDuplicate, product, onProductUpdated, onClose]);
 
   const handleCopyId = useCallback(() => {
+    if (!product) return;
+    
     if (navigator.clipboard) {
       navigator.clipboard.writeText(product._id);
       toast.success("ID copiado al portapapeles", { autoClose: 2000 });
@@ -356,7 +355,8 @@ const ProductDetailModal = ({
           product_id: product._id
         });
       }
-    } catch (error) {
+    } catch (err) {
+      console.error("Error al compartir el producto:", err);
       toast.error("Error al compartir el producto");
     } finally {
       setLoadingStates(prev => ({ ...prev, sharing: false }));
@@ -471,6 +471,14 @@ const ProductDetailModal = ({
       });
     }
   }, [isOpen, product]);
+
+  // ✅ VALIDACIÓN TEMPRANA DESPUÉS DE TODOS LOS HOOKS
+  if (!isOpen || !product) return null;
+  
+  if (!onClose || !onEdit) {
+    console.warn('ProductDetailModal: onClose y onEdit son requeridos');
+    return null;
+  }
 
   // ✅ DATOS CALCULADOS
   const stockStatus = getStockStatus(product);

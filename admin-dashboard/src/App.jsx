@@ -5,7 +5,7 @@ import { useAuth } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoadingSpinner from "./components/LoadingSpinner";
 
-// ✅ Lazy loading para todas las páginas (eliminar ProductDetailPage)
+
 const LoginPage = React.lazy(() => import("./pages/LoginPage"));
 const DashboardLayout = React.lazy(() => import("./pages/DashboardLayout"));
 const DashboardMain = React.lazy(() => import("./pages/DashboardMain"));
@@ -15,26 +15,25 @@ const OrderListPage = React.lazy(() => import("./pages/OrderListPage"));
 const OrderDetailPage = React.lazy(() => import("./pages/OrderDetailPage"));
 const OrderFormPage = React.lazy(() => import("./pages/OrderFormPage"));
 const CustomerListPage = React.lazy(() => import("./pages/CustomerListPage"));
-const CustomerAnalyticsPage = React.lazy(() =>
-  import("./pages/CustomerAnalyticsPage")
-);
-const CustomerDetailPage = React.lazy(() =>
-  import("./pages/CustomerDetailPage")
-);
+const CustomerAnalyticsPage = React.lazy(() =>import("./pages/CustomerAnalyticsPage"));
+
+const CustomerDetailPage = React.lazy(() =>import("./pages/CustomerDetailPage"));
+
 const PromotionListPage = React.lazy(() => import("./pages/PromotionListPage"));
 const PromotionFormPage = React.lazy(() => import("./pages/PromotionFormPage"));
-const PromotionDetailPage = React.lazy(() =>
-  import("./pages/PromotionDetailPage")
-);
+
+const PromotionDetailPage = React.lazy(() =>import("./pages/PromotionDetailPage"));
+
 const SalesReportsPage = React.lazy(() => import("./pages/SalesReportsPage"));
-const ProductAnalyticsPage = React.lazy(() =>
-  import("./pages/ProductAnalyticsPage")
-);
-const GeographicSalesPage = React.lazy(() =>
-  import("./pages/GeographicSalesPage")
-);
+
+const ProductAnalyticsPage = React.lazy(() =>import("./pages/ProductAnalyticsPage"));
+
+const GeographicSalesPage = React.lazy(() =>import("./pages/GeographicSalesPage"));
+
 const InventoryPage = React.lazy(() => import("./pages/InventoryPage"));
+
 const SettingsPage = React.lazy(() => import("./pages/SettingsPage"));
+
 const ReportsPage = React.lazy(() => import("./pages/ReportsPage"));
 
 function App() {
